@@ -1,0 +1,225 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: platform-postgres
+    environment:
+      POSTGRES_DB: platformdb
+      POSTGRES_USER: platform
+      POSTGRES_PASSWORD: platform
+    ports:
+      - "5432:5432"
+    volumes:
+      - platform-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U platform -d platformdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak-postgres:
+    image: postgres:16
+    # Dedicated infrastructure database for Keycloak.
+    # Do not mix Keycloak state with the application's business database.
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    volumes:
+      - keycloak-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    # Development Keycloak instance with imported system and user realms.
+    command:
+      - start-dev
+      - --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    depends_on:
+      keycloak-postgres:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./infra/keycloak/n2-system-realm.json:/opt/keycloak/data/import/n2-system-realm.json:ro
+      - ./infra/keycloak/n2-users-realm.json:/opt/keycloak/data/import/n2-users-realm.json:ro
+    labels:
+      logging: "enabled"
+      service: "keycloak"
+      environment: "Development"
+
+  loki:
+    image: grafana/loki:latest
+    command: ["-config.file=/etc/loki/loki-config.yml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - platform-loki-data:/loki
+
+  grafana:
+    image: grafana/grafana:latest
+    depends_on:
+      loki:
+        condition: service_started
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - platform-grafana-data:/var/lib/grafana
+
+  grafana-alloy:
+    image: grafana/alloy:latest
+    command:
+      - run
+      - /etc/alloy/config.alloy
+    depends_on:
+      loki:
+        condition: service_started
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  catalog:
+    build:
+      context: .
+      dockerfile: services/catalog/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Urls: http://0.0.0.0:5201
+      Database__ConnectionString: Host=postgres;Port=5432;Database=platformdb;Username=platform;Password=platform
+      KeycloakAuthentication__Users__Issuer: http://localhost:8081/realms/n2-users
+      KeycloakAuthentication__Users__Audience: ""
+      KeycloakAuthentication__Users__JwksUrl: http://keycloak:8080/realms/n2-users/protocol/openid-connect/certs
+      KeycloakAuthentication__System__Issuer: http://localhost:8081/realms/n2-system
+      KeycloakAuthentication__System__Audience: ""
+      KeycloakAuthentication__System__JwksUrl: http://keycloak:8080/realms/n2-system/protocol/openid-connect/certs
+    labels:
+      logging: "enabled"
+      service: "catalog"
+      environment: "Development"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    ports:
+      - "5201:5201"
+
+  core-editor:
+    build:
+      context: .
+      dockerfile: services/core-editor/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Urls: http://0.0.0.0:5202
+      Database__ConnectionString: Host=postgres;Port=5432;Database=platformdb;Username=platform;Password=platform
+      KeycloakAuthentication__Users__Issuer: http://localhost:8081/realms/n2-users
+      KeycloakAuthentication__Users__Audience: ""
+      KeycloakAuthentication__Users__JwksUrl: http://keycloak:8080/realms/n2-users/protocol/openid-connect/certs
+      KeycloakAuthentication__System__Issuer: http://localhost:8081/realms/n2-system
+      KeycloakAuthentication__System__Audience: ""
+      KeycloakAuthentication__System__JwksUrl: http://keycloak:8080/realms/n2-system/protocol/openid-connect/certs
+    labels:
+      logging: "enabled"
+      service: "core-editor"
+      environment: "Development"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    ports:
+      - "5202:5202"
+
+  core-query:
+    build:
+      context: .
+      dockerfile: services/core-query/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Urls: http://0.0.0.0:5203
+      Database__ConnectionString: Host=postgres;Port=5432;Database=platformdb;Username=platform;Password=platform
+      KeycloakAuthentication__Users__Issuer: http://localhost:8081/realms/n2-users
+      KeycloakAuthentication__Users__Audience: ""
+      KeycloakAuthentication__Users__JwksUrl: http://keycloak:8080/realms/n2-users/protocol/openid-connect/certs
+      KeycloakAuthentication__System__Issuer: http://localhost:8081/realms/n2-system
+      KeycloakAuthentication__System__Audience: ""
+      KeycloakAuthentication__System__JwksUrl: http://keycloak:8080/realms/n2-system/protocol/openid-connect/certs
+    labels:
+      logging: "enabled"
+      service: "core-query"
+      environment: "Development"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    ports:
+      - "5203:5203"
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Urls: http://0.0.0.0:5100
+      Gateway__PublicBaseUrl: http://localhost:5100
+      InternalServices__CatalogUrl: http://catalog:5201
+      InternalServices__CoreEditorUrl: http://core-editor:5202
+      InternalServices__CoreQueryUrl: http://core-query:5203
+      KeycloakAuthentication__Users__Issuer: http://localhost:8081/realms/n2-users
+      KeycloakAuthentication__Users__Audience: ""
+      KeycloakAuthentication__Users__JwksUrl: http://keycloak:8080/realms/n2-users/protocol/openid-connect/certs
+      KeycloakAuthentication__System__Issuer: http://localhost:8081/realms/n2-system
+      KeycloakAuthentication__System__Audience: ""
+      KeycloakAuthentication__System__JwksUrl: http://keycloak:8080/realms/n2-system/protocol/openid-connect/certs
+    labels:
+      logging: "enabled"
+      service: "gateway"
+      environment: "Development"
+    depends_on:
+      catalog:
+        condition: service_started
+      core-editor:
+        condition: service_started
+      core-query:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    ports:
+      - "5100:5100"
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    labels:
+      logging: "enabled"
+      service: "web"
+      environment: "Development"
+    depends_on:
+      gateway:
+        condition: service_started
+    ports:
+      - "8080:80"
+
+volumes:
+  platform-postgres-data:
+  keycloak-postgres-data:
+  platform-loki-data:
+  platform-grafana-data:

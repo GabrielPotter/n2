@@ -1,0 +1,154 @@
+{
+  "realm": "n2-system",
+  "enabled": true,
+  "displayName": "n2 System Realm",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": false,
+  "roles": {
+    "realm": [
+      {
+        "name": "platform-admin"
+      },
+      {
+        "name": "support-admin"
+      },
+      {
+        "name": "security-admin"
+      }
+    ]
+  },
+  "clientScopes": [
+    {
+      "name": "n2-system-access",
+      "description": "Application access token claims for n2-system",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "subject",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "id",
+            "claim.name": "sub",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "realm_roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "n2-system-admin",
+      "name": "n2 System Admin",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "bearerOnly": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://127.0.0.1:5173/*",
+        "http://localhost:8080/*",
+        "http://127.0.0.1:8080/*",
+        "http://localhost:8081/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:8081"
+      ],
+      "defaultClientScopes": [
+        "n2-system-access"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "52000000-0000-0000-0000-000000000001",
+      "username": "platform-admin@example.com",
+      "email": "platform-admin@example.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "System",
+      "lastName": "Admin",
+      "realmRoles": [
+        "platform-admin"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Password123!",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "52000000-0000-0000-0000-000000000002",
+      "username": "support-admin@example.com",
+      "email": "support-admin@example.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Service",
+      "lastName": "Operator",
+      "realmRoles": [
+        "support-admin"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Password123!",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "52000000-0000-0000-0000-000000000003",
+      "username": "security-admin@example.com",
+      "email": "security-admin@example.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Security",
+      "lastName": "Admin",
+      "realmRoles": [
+        "security-admin"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Password123!",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

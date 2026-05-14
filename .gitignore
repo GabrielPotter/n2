@@ -1,0 +1,40 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+
+# VS Code local state
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+.vs/
+
+# Node / frontend
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# .NET
+bin/
+obj/
+TestResults/
+artifacts/
+*.user
+*.suo
+
+# Local env
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Docker / database local files
+postgres-data/
+
+# Developer scratch space
+temp/
