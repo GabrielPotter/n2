@@ -38,9 +38,9 @@ public sealed class CoreQueryService
     {
         var userContext = _userContextAccessor.GetCurrent();
 
-        if (userContext is null || !Guid.TryParse(userContext.TenantId, out var tenantId))
+        if (userContext is null || string.IsNullOrWhiteSpace(userContext.TenantId) || !Guid.TryParse(userContext.TenantId, out var tenantId))
         {
-            return Result<QueryObjectsResponse>.Failure(new Error("authorization_error", "A valid tenant context is required."));
+            return Result<QueryObjectsResponse>.Failure(Error.Unauthorized("A valid tenant context is required."));
         }
 
         var objectsResult = await _database.GetObjectsAsync(tenantId, cancellationToken);

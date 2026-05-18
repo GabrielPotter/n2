@@ -12,10 +12,8 @@ public static class Api
             return new HealthResponse("core-query", "ok");
         });
 
-        app.MapGet("/internal/status", GetInternalStatusAsync)
-            .RequireAuthorization(AppAuthorizationPolicies.SupportAdmin);
-        app.MapGet("/api/query/objects", GetObjectsAsync)
-            .RequireAuthorization(AppAuthorizationPolicies.Viewer);
+        app.MapGet("/internal/status", GetInternalStatusAsync);
+        app.MapGet("/api/query/objects", GetObjectsAsync);
 
         return app;
     }

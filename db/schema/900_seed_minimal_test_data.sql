@@ -37,14 +37,14 @@ declare
   v_tenant_admin_permission_id uuid := '44000000-0000-0000-0000-000000000003';
 begin
   insert into app.tenant (
-    tenant_id,
-    code,
+    id,
     name,
-    status
+    status,
+    properties
   )
   values
-    (v_dev_tenant_id, 'dev-tenant', 'Development Tenant', 'active'),
-    (v_ops_tenant_id, 'ops-tenant', 'Operations Tenant', 'active');
+    (v_dev_tenant_id, 'Development Tenant', 'active', '{"environment":"development"}'::jsonb),
+    (v_ops_tenant_id, 'Operations Tenant', 'active', '{"environment":"operations"}'::jsonb);
 
   insert into app.object_category (
     category_id,

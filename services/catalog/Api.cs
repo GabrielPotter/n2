@@ -12,12 +12,9 @@ public static class Api
             return new HealthResponse("catalog", "ok");
         });
 
-        app.MapGet("/internal/status", GetInternalStatusAsync)
-            .RequireAuthorization(AppAuthorizationPolicies.SupportAdmin);
-        app.MapGet("/api/catalog/categories", GetCategoriesAsync)
-            .RequireAuthorization(AppAuthorizationPolicies.Viewer);
-        app.MapGet("/api/catalog/types", GetTypesAsync)
-            .RequireAuthorization(AppAuthorizationPolicies.Viewer);
+        app.MapGet("/internal/status", GetInternalStatusAsync);
+        app.MapGet("/api/catalog/categories", GetCategoriesAsync);
+        app.MapGet("/api/catalog/types", GetTypesAsync);
 
         return app;
     }

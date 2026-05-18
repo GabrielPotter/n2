@@ -1,3 +1,4 @@
+using Common;
 using Microsoft.Extensions.Options;
 
 namespace Gateway;
@@ -36,13 +37,17 @@ public sealed class GatewayService
             "ok",
             _settings.PublicBaseUrl,
             new GatewayRoutesResponse(
-                "/api/catalog/status",
-                "/api/editor/status",
-                "/api/query/status",
-                "/api/catalog/categories",
-                "/api/catalog/types",
-                "/api/query/objects",
-                "/api/editor/object"));
+                "/api/v1/gateway/status",
+                "/api/v1/catalog/status",
+                "/api/v1/editor/status",
+                "/api/v1/query/status",
+                "/api/v1/system/status",
+                "/api/v1/system/me",
+                "/api/v1/catalog/categories",
+                "/api/v1/catalog/types",
+                "/api/v1/query/objects",
+                "/api/v1/editor/object",
+                "/api/v1/system/tenants"));
 
         return Task.FromResult(response);
     }
@@ -62,6 +67,11 @@ public sealed class GatewayService
         return _client.GetQueryStatusAsync(cancellationToken);
     }
 
+    public Task<Common.Result<InternalStatusResponse>> GetSystemStatusAsync(CancellationToken cancellationToken)
+    {
+        return _client.GetSystemStatusAsync(cancellationToken);
+    }
+
     public Task<Common.Result<CatalogCategoriesResponse>> GetCatalogCategoriesAsync(CancellationToken cancellationToken)
     {
         return _client.GetCatalogCategoriesAsync(cancellationToken);
@@ -75,6 +85,41 @@ public sealed class GatewayService
     public Task<Common.Result<CatalogTypesResponse>> GetCatalogTypesAsync(CancellationToken cancellationToken)
     {
         return _client.GetCatalogTypesAsync(cancellationToken);
+    }
+
+    public Task<ProxyResponse> GetSystemCurrentUserAsync(CancellationToken cancellationToken)
+    {
+        return _client.GetSystemCurrentUserAsync(cancellationToken);
+    }
+
+    public Task<ProxyResponse> GetSystemTenantsAsync(CancellationToken cancellationToken)
+    {
+        return _client.GetSystemTenantsAsync(cancellationToken);
+    }
+
+    public Task<ProxyResponse> GetSystemTenantAsync(string tenantId, CancellationToken cancellationToken)
+    {
+        return _client.GetSystemTenantAsync(tenantId, cancellationToken);
+    }
+
+    public Task<ProxyResponse> CreateSystemTenantAsync(TenantCreateRequest request, CancellationToken cancellationToken)
+    {
+        return _client.CreateSystemTenantAsync(request, cancellationToken);
+    }
+
+    public Task<ProxyResponse> UpdateSystemTenantAsync(string tenantId, TenantUpdateRequest request, CancellationToken cancellationToken)
+    {
+        return _client.UpdateSystemTenantAsync(tenantId, request, cancellationToken);
+    }
+
+    public Task<ProxyResponse> PatchSystemTenantAsync(string tenantId, TenantPatchRequest request, CancellationToken cancellationToken)
+    {
+        return _client.PatchSystemTenantAsync(tenantId, request, cancellationToken);
+    }
+
+    public Task<ProxyResponse> DeleteSystemTenantAsync(string tenantId, CancellationToken cancellationToken)
+    {
+        return _client.DeleteSystemTenantAsync(tenantId, cancellationToken);
     }
 
     public Task<Common.Result<CreateObjectResponse>> CreateObjectAsync(

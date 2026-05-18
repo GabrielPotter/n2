@@ -12,10 +12,8 @@ public static class Api
             return new HealthResponse("core-editor", "ok");
         });
 
-        app.MapGet("/internal/status", GetInternalStatusAsync)
-            .RequireAuthorization(AppAuthorizationPolicies.SupportAdmin);
-        app.MapPost("/api/editor/object", CreateObjectAsync)
-            .RequireAuthorization(AppAuthorizationPolicies.Editor);
+        app.MapGet("/internal/status", GetInternalStatusAsync);
+        app.MapPost("/api/editor/object", CreateObjectAsync);
 
         return app;
     }

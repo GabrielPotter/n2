@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -13,7 +14,8 @@ public static class Http
     {
         services.AddHttpContextAccessor();
         services.AddTransient<CorrelationIdHandler>();
-        services.AddTransient<AccessTokenForwardingHandler>();
+        services.AddTransient<UserContextForwardingHandler>();
+        services.TryAddSingleton<IUserContextAccessor, UserContextAccessor>();
         return services;
     }
 
@@ -53,6 +55,17 @@ public static class CorrelationId
 
         return correlationId;
     }
+}
+
+public static class RequestContextHeaders
+{
+    public const string UserId = "X-User-Id";
+    public const string TenantId = "X-Tenant-Id";
+    public const string Username = "X-Username";
+    public const string Email = "X-Email";
+    public const string Realm = "X-Realm";
+    public const string Roles = "X-Roles";
+    public const string AuthzVersion = "X-Authz-Version";
 }
 
 public sealed class CorrelationIdMiddleware
@@ -103,26 +116,41 @@ public sealed class CorrelationIdHandler : DelegatingHandler
     }
 }
 
-public sealed class AccessTokenForwardingHandler : DelegatingHandler
+public sealed class UserContextForwardingHandler : DelegatingHandler
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IUserContextAccessor _userContextAccessor;
 
-    public AccessTokenForwardingHandler(IHttpContextAccessor httpContextAccessor)
+    public UserContextForwardingHandler(IUserContextAccessor userContextAccessor)
     {
-        _httpContextAccessor = httpContextAccessor;
+        _userContextAccessor = userContextAccessor;
     }
 
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var authorizationHeader = _httpContextAccessor.HttpContext?.Request.Headers.Authorization.ToString();
+        var userContext = _userContextAccessor.GetCurrent();
 
-        if (!string.IsNullOrWhiteSpace(authorizationHeader))
+        if (userContext is not null)
         {
-            request.Headers.Remove("Authorization");
-            request.Headers.TryAddWithoutValidation("Authorization", authorizationHeader);
+            SetHeader(request, RequestContextHeaders.UserId, userContext.UserId);
+            SetHeader(request, RequestContextHeaders.TenantId, userContext.TenantId);
+            SetHeader(request, RequestContextHeaders.Username, userContext.Username);
+            SetHeader(request, RequestContextHeaders.Email, userContext.Email);
+            SetHeader(request, RequestContextHeaders.Realm, userContext.Realm);
+            SetHeader(request, RequestContextHeaders.Roles, userContext.Roles.Count == 0 ? null : string.Join(",", userContext.Roles));
+            SetHeader(request, RequestContextHeaders.AuthzVersion, userContext.AuthzVersion?.ToString());
         }
 
         return base.SendAsync(request, cancellationToken);
+    }
+
+    private static void SetHeader(HttpRequestMessage request, string headerName, string? value)
+    {
+        request.Headers.Remove(headerName);
+
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            request.Headers.TryAddWithoutValidation(headerName, value);
+        }
     }
 }
 

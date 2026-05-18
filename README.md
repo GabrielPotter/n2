@@ -8,6 +8,7 @@ Compact local platform stack with .NET microservices, a React TypeScript fronten
 - `catalog` catalog read endpoints
 - `core-editor` object write endpoints
 - `core-query` object read endpoints
+- `system` system realm group endpoints
 - `common` shared backend library
 - `web` React frontend
 
@@ -33,6 +34,7 @@ dotnet run --project services/gateway/Gateway.csproj
 dotnet run --project services/catalog/Catalog.csproj
 dotnet run --project services/core-editor/CoreEditor.csproj
 dotnet run --project services/core-query/CoreQuery.csproj
+dotnet run --project services/system/System.csproj
 cd web && npm run dev
 ```
 

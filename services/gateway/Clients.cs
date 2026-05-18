@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 using Common;
 using Microsoft.Extensions.Options;
 
@@ -13,6 +15,8 @@ public sealed class GatewayClientsSettings
     public string CoreEditorUrl { get; init; } = "http://localhost:5202";
 
     public string CoreQueryUrl { get; init; } = "http://localhost:5203";
+
+    public string SystemUrl { get; init; } = "http://localhost:5204";
 }
 
 public static class Clients
@@ -22,7 +26,7 @@ public static class Clients
         services
             .AddHttpClient("gateway-upstream")
             .AddHttpMessageHandler<CorrelationIdHandler>()
-            .AddHttpMessageHandler<AccessTokenForwardingHandler>();
+            .AddHttpMessageHandler<UserContextForwardingHandler>();
 
         services.AddSingleton<GatewayClient>();
         return services;
@@ -60,6 +64,11 @@ public sealed class GatewayClient
         return GetStatusAsync(_settings.CoreQueryUrl, cancellationToken);
     }
 
+    public Task<Result<InternalStatusResponse>> GetSystemStatusAsync(CancellationToken cancellationToken)
+    {
+        return GetStatusAsync(_settings.SystemUrl, cancellationToken);
+    }
+
     public Task<Result<CatalogCategoriesResponse>> GetCatalogCategoriesAsync(CancellationToken cancellationToken)
     {
         return GetAsync<CatalogCategoriesResponse>(_settings.CatalogUrl, "/api/catalog/categories", cancellationToken);
@@ -73,6 +82,41 @@ public sealed class GatewayClient
     public Task<Result<QueryObjectsResponse>> GetQueryObjectsAsync(CancellationToken cancellationToken)
     {
         return GetAsync<QueryObjectsResponse>(_settings.CoreQueryUrl, "/api/query/objects", cancellationToken);
+    }
+
+    public Task<ProxyResponse> GetSystemCurrentUserAsync(CancellationToken cancellationToken)
+    {
+        return SendAsync(HttpMethod.Get, _settings.SystemUrl, "/api/v1/me", cancellationToken);
+    }
+
+    public Task<ProxyResponse> GetSystemTenantsAsync(CancellationToken cancellationToken)
+    {
+        return SendAsync(HttpMethod.Get, _settings.SystemUrl, "/api/v1/tenants", cancellationToken);
+    }
+
+    public Task<ProxyResponse> GetSystemTenantAsync(string tenantId, CancellationToken cancellationToken)
+    {
+        return SendAsync(HttpMethod.Get, _settings.SystemUrl, $"/api/v1/tenants/{tenantId}", cancellationToken);
+    }
+
+    public Task<ProxyResponse> CreateSystemTenantAsync(TenantCreateRequest request, CancellationToken cancellationToken)
+    {
+        return SendAsync(HttpMethod.Post, _settings.SystemUrl, "/api/v1/tenants", cancellationToken, request);
+    }
+
+    public Task<ProxyResponse> UpdateSystemTenantAsync(string tenantId, TenantUpdateRequest request, CancellationToken cancellationToken)
+    {
+        return SendAsync(HttpMethod.Put, _settings.SystemUrl, $"/api/v1/tenants/{tenantId}", cancellationToken, request);
+    }
+
+    public Task<ProxyResponse> PatchSystemTenantAsync(string tenantId, TenantPatchRequest request, CancellationToken cancellationToken)
+    {
+        return SendAsync(new HttpMethod("PATCH"), _settings.SystemUrl, $"/api/v1/tenants/{tenantId}", cancellationToken, request);
+    }
+
+    public Task<ProxyResponse> DeleteSystemTenantAsync(string tenantId, CancellationToken cancellationToken)
+    {
+        return SendAsync(HttpMethod.Delete, _settings.SystemUrl, $"/api/v1/tenants/{tenantId}", cancellationToken);
     }
 
     public Task<Result<CreateObjectResponse>> CreateObjectAsync(
@@ -161,5 +205,70 @@ public sealed class GatewayClient
             _logger.LogError(exception, "Upstream POST failed. BaseUrl: {BaseUrl}, Path: {Path}", baseUrl, path);
             return Result<TResponse>.Failure(new Error("upstream_error", exception.Message));
         }
+    }
+
+    private Task<ProxyResponse> SendAsync(
+        HttpMethod method,
+        string baseUrl,
+        string path,
+        CancellationToken cancellationToken)
+    {
+        return SendAsync<object>(method, baseUrl, path, cancellationToken);
+    }
+
+    private async Task<ProxyResponse> SendAsync<TRequest>(
+        HttpMethod method,
+        string baseUrl,
+        string path,
+        CancellationToken cancellationToken,
+        TRequest? request = default)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("gateway-upstream");
+            using var message = new HttpRequestMessage(method, $"{baseUrl.TrimEnd('/')}{path}");
+
+            if (request is not null)
+            {
+                message.Content = JsonContent.Create(request);
+            }
+
+            using var response = await client.SendAsync(message, cancellationToken);
+            var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/json";
+            var body = response.Content is null
+                ? string.Empty
+                : await response.Content.ReadAsStringAsync(cancellationToken);
+
+            return new ProxyResponse((int)response.StatusCode, contentType, body);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Upstream proxy request failed. BaseUrl: {BaseUrl}, Path: {Path}, Method: {Method}", baseUrl, path, method);
+
+            return new ProxyResponse(
+                StatusCodes.Status502BadGateway,
+                "application/json",
+                JsonSerializer.Serialize(new
+                {
+                    error = new
+                    {
+                        code = "upstream_error",
+                        message = exception.Message
+                    }
+                }));
+        }
+    }
+}
+
+public sealed record ProxyResponse(int StatusCode, string ContentType, string Body)
+{
+    public IResult ToResult()
+    {
+        if (StatusCode == StatusCodes.Status204NoContent)
+        {
+            return TypedResults.NoContent();
+        }
+
+        return Results.Content(Body, ContentType, Encoding.UTF8, StatusCode);
     }
 }

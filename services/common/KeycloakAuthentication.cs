@@ -48,8 +48,6 @@ public static class KeycloakAuthentication
         services.Configure<KeycloakAuthenticationSettings>(
             configuration.GetSection(KeycloakAuthenticationSettings.SectionName));
 
-        services.TryAddSingleton<IUserContextAccessor, UserContextAccessor>();
-
         services
             .AddAuthentication()
             .AddJwtBearer(KeycloakAuthenticationSchemes.Users)
@@ -64,6 +62,12 @@ public static class KeycloakAuthentication
                 policy.RequireClaim(AppClaimTypes.TenantId);
                 policy.RequireAssertion(static context =>
                     !string.IsNullOrWhiteSpace(context.User.FindFirstValue(AppClaimTypes.TenantId)));
+            })
+            .AddPolicy(AppAuthorizationPolicies.AuthenticatedUser, policy =>
+            {
+                policy.AuthenticationSchemes.Add(KeycloakAuthenticationSchemes.Users);
+                policy.AuthenticationSchemes.Add(KeycloakAuthenticationSchemes.System);
+                policy.RequireAuthenticatedUser();
             })
             .AddPolicy(AppAuthorizationPolicies.Viewer, policy =>
             {
@@ -82,6 +86,15 @@ public static class KeycloakAuthentication
                 policy.AuthenticationSchemes.Add(KeycloakAuthenticationSchemes.Users);
                 policy.RequireAuthenticatedUser();
                 policy.RequireAppRole(AppRoles.TenantAdmin);
+            })
+            .AddPolicy(AppAuthorizationPolicies.SystemUser, policy =>
+            {
+                policy.AuthenticationSchemes.Add(KeycloakAuthenticationSchemes.System);
+                policy.RequireAuthenticatedUser();
+                policy.RequireSystemRole(
+                    SystemRoles.PlatformAdmin,
+                    SystemRoles.SupportAdmin,
+                    SystemRoles.SecurityAdmin);
             })
             .AddPolicy(AppAuthorizationPolicies.PlatformAdmin, policy =>
             {
@@ -241,9 +254,11 @@ public static class KeycloakAuthentication
 public static class AppAuthorizationPolicies
 {
     public const string AuthenticatedTenant = "AuthenticatedTenant";
+    public const string AuthenticatedUser = "AuthenticatedUser";
     public const string Viewer = "Viewer";
     public const string Editor = "Editor";
     public const string TenantAdmin = "TenantAdmin";
+    public const string SystemUser = "SystemUser";
     public const string PlatformAdmin = "PlatformAdmin";
     public const string SupportAdmin = "SupportAdmin";
     public const string SecurityAdmin = "SecurityAdmin";
@@ -286,24 +301,38 @@ public sealed class UserContextAccessor : IUserContextAccessor
 
     public UserContext? GetCurrent()
     {
-        var principal = _httpContextAccessor.HttpContext?.User;
+        var httpContext = _httpContextAccessor.HttpContext;
+
+        if (httpContext is null)
+        {
+            return null;
+        }
+
+        var principal = httpContext.User;
 
         if (principal?.Identity?.IsAuthenticated != true)
         {
-            return null;
+            return ReadFromHeaders(httpContext.Request.Headers);
         }
 
         var userId = principal.FindFirstValue(JwtRegisteredClaimNames.Sub)
             ?? principal.FindFirstValue(ClaimTypes.NameIdentifier);
         var tenantId = principal.FindFirstValue(AppClaimTypes.TenantId);
         var authzVersionValue = principal.FindFirstValue(AppClaimTypes.AuthzVersion);
+        var issuer = principal.FindFirstValue(JwtRegisteredClaimNames.Iss);
+        var username = principal.FindFirstValue("preferred_username") ?? principal.Identity?.Name;
+        var email = principal.FindFirstValue(JwtRegisteredClaimNames.Email);
 
-        if (string.IsNullOrWhiteSpace(userId) ||
-            string.IsNullOrWhiteSpace(tenantId) ||
-            string.IsNullOrWhiteSpace(authzVersionValue) ||
-            !int.TryParse(authzVersionValue, out var authzVersion))
+        if (string.IsNullOrWhiteSpace(userId))
         {
             return null;
+        }
+
+        int? authzVersion = null;
+
+        if (!string.IsNullOrWhiteSpace(authzVersionValue) && int.TryParse(authzVersionValue, out var parsedAuthzVersion))
+        {
+            authzVersion = parsedAuthzVersion;
         }
 
         var roles = principal.FindAll(AppClaimTypes.Roles)
@@ -316,16 +345,82 @@ public sealed class UserContextAccessor : IUserContextAccessor
         return new UserContext(
             userId,
             tenantId,
+            username,
+            email,
+            GetRealmName(issuer),
             roles,
             authzVersion);
+    }
+
+    private static UserContext? ReadFromHeaders(IHeaderDictionary headers)
+    {
+        var userId = headers[RequestContextHeaders.UserId].FirstOrDefault();
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return null;
+        }
+
+        var tenantId = headers[RequestContextHeaders.TenantId].FirstOrDefault();
+        var username = headers[RequestContextHeaders.Username].FirstOrDefault();
+        var email = headers[RequestContextHeaders.Email].FirstOrDefault();
+        var realm = headers[RequestContextHeaders.Realm].FirstOrDefault() ?? string.Empty;
+        var authzVersionValue = headers[RequestContextHeaders.AuthzVersion].FirstOrDefault();
+
+        int? authzVersion = null;
+
+        if (!string.IsNullOrWhiteSpace(authzVersionValue) && int.TryParse(authzVersionValue, out var parsedAuthzVersion))
+        {
+            authzVersion = parsedAuthzVersion;
+        }
+
+        var roles = (headers[RequestContextHeaders.Roles].FirstOrDefault() ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(static role => !string.IsNullOrWhiteSpace(role))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        return new UserContext(
+            userId,
+            tenantId,
+            username,
+            email,
+            realm,
+            roles,
+            authzVersion);
+    }
+
+    private static string GetRealmName(string? issuer)
+    {
+        if (string.IsNullOrWhiteSpace(issuer))
+        {
+            return string.Empty;
+        }
+
+        const string marker = "/realms/";
+        var markerIndex = issuer.LastIndexOf(marker, StringComparison.Ordinal);
+
+        if (markerIndex < 0)
+        {
+            return issuer;
+        }
+
+        var realmStartIndex = markerIndex + marker.Length;
+        return realmStartIndex >= issuer.Length
+            ? string.Empty
+            : issuer[realmStartIndex..];
     }
 }
 
 public sealed record UserContext(
     string UserId,
-    string TenantId,
+    string? TenantId,
+    string? Username,
+    string? Email,
+    string Realm,
     IReadOnlyList<string> Roles,
-    int AuthzVersion);
+    int? AuthzVersion);
 
 internal sealed class JwksConfigurationManager : IConfigurationManager<OpenIdConnectConfiguration>
 {

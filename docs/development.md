@@ -37,6 +37,7 @@ dotnet run --project services/gateway/Gateway.csproj
 dotnet run --project services/catalog/Catalog.csproj
 dotnet run --project services/core-editor/CoreEditor.csproj
 dotnet run --project services/core-query/CoreQuery.csproj
+dotnet run --project services/system/System.csproj
 cd web && npm run dev
 ```
 
@@ -46,6 +47,18 @@ Build, test, and reset the database:
 make build
 make test
 make db-reset
+```
+
+List the host-side physical mount locations of all database volumes:
+
+```bash
+project_name="${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}"
+
+for volume in $(docker compose config --volumes | grep 'postgres-data$'); do
+  actual_volume="${project_name}_${volume}"
+  echo "Volume: $actual_volume"
+  docker volume inspect "$actual_volume" --format '  Mountpoint: {{ .Mountpoint }}'
+done
 ```
 
 ## Useful Ports
@@ -58,6 +71,7 @@ make db-reset
 - `5201` `catalog`
 - `5202` `core-editor`
 - `5203` `core-query`
+- `5204` `system`
 - `5173` Vite dev server
 - `8080` Docker web container
 - `3000` Grafana

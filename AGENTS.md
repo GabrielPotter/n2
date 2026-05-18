@@ -320,3 +320,22 @@ Backend code must be C#.
 Frontend code, if touched, must be TypeScript.
 
 Do not generate JavaScript.
+
+## 14. REST API rules:
+
+- Use resource-oriented REST endpoints.
+- Do not put verbs into URLs unless modeling a command collection is impossible.
+- GET must be read-only.
+- POST creates resources or starts business commands.
+- PUT replaces a complete resource.
+- PATCH partially updates a resource.
+- DELETE performs soft-delete by setting status = deleted.
+- Normal tenant APIs must not contain tenantId in the URL.
+- Tenant context must come from the Keycloak JWT tenant_id claim.
+- System/admin APIs may use /system/tenants/{tenantId}/... routes.
+- All references must use IDs only.
+- Names are display-only.
+- Do not add code fields.
+- object.object_kind is forbidden.
+- Object kind must be resolved only through object.category_id -> object_category.object_kind.
+- object.type_id must belong to the same category as object.category_id.

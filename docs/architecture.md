@@ -6,6 +6,7 @@
 - `catalog`: read-only catalog endpoints
 - `core-editor`: write endpoints for business objects
 - `core-query`: read endpoints for business objects
+- `system`: system realm group endpoints
 - `web`: React TypeScript frontend
 - `postgres`: application database
 - `keycloak`: development authentication and authorization server with imported `n2-system` and `n2-users` realms
@@ -46,4 +47,5 @@
 - `catalog`
 - `core-editor`
 - `core-query`
+- `system`
 - `web`

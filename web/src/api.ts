@@ -81,19 +81,19 @@ export async function loginWithPassword(realm: RealmId, username: string, passwo
 }
 
 export function getCatalogCategories(accessToken: string): Promise<CatalogCategoriesResponse> {
-  return getJson<CatalogCategoriesResponse>("/api/catalog/categories", accessToken);
+  return getJson<CatalogCategoriesResponse>("/api/v1/catalog/categories", accessToken);
 }
 
 export function getCatalogTypes(accessToken: string): Promise<CatalogTypesResponse> {
-  return getJson<CatalogTypesResponse>("/api/catalog/types", accessToken);
+  return getJson<CatalogTypesResponse>("/api/v1/catalog/types", accessToken);
 }
 
 export function getQueryObjects(accessToken: string): Promise<QueryObjectsResponse> {
-  return getJson<QueryObjectsResponse>("/api/query/objects", accessToken);
+  return getJson<QueryObjectsResponse>("/api/v1/query/objects", accessToken);
 }
 
 export function createObject(request: CreateObjectRequest, accessToken: string): Promise<CreateObjectResponse> {
-  return postJson<CreateObjectRequest, CreateObjectResponse>("/api/editor/object", request, accessToken);
+  return postJson<CreateObjectRequest, CreateObjectResponse>("/api/v1/editor/object", request, accessToken);
 }
 
 type JwtPayload = {

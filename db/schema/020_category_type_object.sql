@@ -15,7 +15,7 @@ create table app.object_category (
   deleted_by uuid,
   constraint fk_object_category_tenant
     foreign key (tenant_id)
-    references app.tenant (tenant_id),
+    references app.tenant (id),
   constraint uq_object_category_tenant_category
     unique (tenant_id, category_id),
   constraint uq_object_category_tenant_category_kind
@@ -70,7 +70,7 @@ create table app.graph_object (
   delete_operation_id uuid,
   constraint fk_graph_object_tenant
     foreign key (tenant_id)
-    references app.tenant (tenant_id),
+    references app.tenant (id),
   constraint fk_graph_object_category
     foreign key (tenant_id, category_id)
     references app.object_category (tenant_id, category_id),

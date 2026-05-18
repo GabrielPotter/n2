@@ -38,9 +38,9 @@ public sealed class CatalogService
     {
         var userContext = _userContextAccessor.GetCurrent();
 
-        if (userContext is null || !Guid.TryParse(userContext.TenantId, out var tenantId))
+        if (userContext is null || string.IsNullOrWhiteSpace(userContext.TenantId) || !Guid.TryParse(userContext.TenantId, out var tenantId))
         {
-            return Result<CatalogCategoriesResponse>.Failure(new Error("authorization_error", "A valid tenant context is required."));
+            return Result<CatalogCategoriesResponse>.Failure(Error.Unauthorized("A valid tenant context is required."));
         }
 
         var categoriesResult = await _database.GetCategoriesAsync(tenantId, cancellationToken);
@@ -61,9 +61,9 @@ public sealed class CatalogService
     {
         var userContext = _userContextAccessor.GetCurrent();
 
-        if (userContext is null || !Guid.TryParse(userContext.TenantId, out var tenantId))
+        if (userContext is null || string.IsNullOrWhiteSpace(userContext.TenantId) || !Guid.TryParse(userContext.TenantId, out var tenantId))
         {
-            return Result<CatalogTypesResponse>.Failure(new Error("authorization_error", "A valid tenant context is required."));
+            return Result<CatalogTypesResponse>.Failure(Error.Unauthorized("A valid tenant context is required."));
         }
 
         var typesResult = await _database.GetTypesAsync(tenantId, cancellationToken);

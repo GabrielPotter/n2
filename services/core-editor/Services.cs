@@ -60,9 +60,9 @@ public sealed class CoreEditorService
 
         var userContext = _userContextAccessor.GetCurrent();
 
-        if (userContext is null || !Guid.TryParse(userContext.TenantId, out var tenantId))
+        if (userContext is null || string.IsNullOrWhiteSpace(userContext.TenantId) || !Guid.TryParse(userContext.TenantId, out var tenantId))
         {
-            return Result<CreateObjectResponse>.Failure(new Error("authorization_error", "A valid tenant context is required."));
+            return Result<CreateObjectResponse>.Failure(Error.Unauthorized("A valid tenant context is required."));
         }
 
         var createResult = await _database.CreateObjectAsync(request, tenantId, cancellationToken);

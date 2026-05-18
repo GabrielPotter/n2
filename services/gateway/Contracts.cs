@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Gateway;
 
 public sealed record HealthResponse(string Service, string Status);
@@ -9,13 +11,17 @@ public sealed record GatewayStatusResponse(
     GatewayRoutesResponse Routes);
 
 public sealed record GatewayRoutesResponse(
+    string GatewayStatus,
     string CatalogStatus,
     string EditorStatus,
     string QueryStatus,
+    string SystemStatus,
+    string CurrentUser,
     string CatalogCategories,
     string CatalogTypes,
     string QueryObjects,
-    string CreateObject);
+    string CreateObject,
+    string SystemTenants);
 
 public sealed record InternalStatusResponse(
     string Service,
@@ -62,3 +68,47 @@ public sealed record EditorObjectResponse(
     string Status);
 
 public sealed record CreateObjectResponse(string Service, EditorObjectResponse Object);
+
+public sealed class TenantCreateRequest
+{
+    public string? Name { get; init; }
+
+    public string? Status { get; init; }
+
+    public JsonElement? Properties { get; init; }
+}
+
+public sealed class TenantUpdateRequest
+{
+    public string? Name { get; init; }
+
+    public string? Status { get; init; }
+
+    public JsonElement? Properties { get; init; }
+}
+
+public sealed class TenantPatchRequest
+{
+    public string? Name { get; init; }
+
+    public string? Status { get; init; }
+
+    public JsonElement? Properties { get; init; }
+}
+
+public sealed record TenantResponse(
+    string Id,
+    string Name,
+    string Status,
+    JsonElement Properties,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? DeletedAt);
+
+public sealed record CurrentUserResponse(
+    string Subject,
+    string? Username,
+    string? Email,
+    string Realm,
+    string? TenantId,
+    IReadOnlyList<string> Roles);

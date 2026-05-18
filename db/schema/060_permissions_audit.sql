@@ -12,7 +12,7 @@ create table app.auth_user (
   updated_at timestamptz not null default now(),
   constraint fk_auth_user_tenant
     foreign key (tenant_id)
-    references app.tenant (tenant_id),
+    references app.tenant (id),
   constraint uq_auth_user_tenant_user
     unique (tenant_id, auth_user_id),
   constraint ck_auth_user_authz_version
@@ -58,7 +58,7 @@ create table app.auth_group (
   updated_at timestamptz not null default now(),
   constraint fk_auth_group_tenant
     foreign key (tenant_id)
-    references app.tenant (tenant_id),
+    references app.tenant (id),
   constraint uq_auth_group_tenant_group
     unique (tenant_id, group_id)
 );
@@ -157,7 +157,7 @@ create table app.audit_event (
   created_at timestamptz not null default now(),
   constraint fk_audit_event_tenant
     foreign key (tenant_id)
-    references app.tenant (tenant_id),
+    references app.tenant (id),
   constraint fk_audit_event_actor_user
     foreign key (actor_user_id)
     references app.auth_user (auth_user_id)
