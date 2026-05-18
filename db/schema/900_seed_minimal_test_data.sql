@@ -37,9 +37,9 @@ declare
   v_tenant_admin_permission_id uuid := '44000000-0000-0000-0000-000000000003';
 begin
   insert into app.tenant (
-    id,
-    name,
-    status,
+    tenant_id,
+    tenant_name,
+    tenant_status,
     properties
   )
   values
@@ -50,9 +50,9 @@ begin
     category_id,
     tenant_id,
     object_kind,
-    name,
+    category_name,
     json_schema,
-    status
+    category_status
   )
   values
     (v_net_category_id, v_dev_tenant_id, 'net', 'Net Category', '{}'::jsonb, 'active'),
@@ -65,9 +65,9 @@ begin
     type_id,
     tenant_id,
     category_id,
-    name,
+    type_name,
     json_schema,
-    status
+    type_status
   )
   values
     (v_net_type_id, v_dev_tenant_id, v_net_category_id, 'Net Type', '{}'::jsonb, 'active'),
@@ -83,7 +83,7 @@ begin
     email,
     is_enabled,
     authz_version,
-    status
+    auth_user_status
   )
   values
     (v_admin_user_id, v_dev_tenant_id, 'Admin Developer', 'admin@example.com', true, 1, 'active'),
@@ -96,7 +96,7 @@ begin
     issuer,
     external_subject,
     auth_user_id,
-    status
+    external_identity_status
   )
   values
     (v_admin_identity_id, 'keycloak', 'http://localhost:8081/realms/n2-users', '51000000-0000-0000-0000-000000000001', v_admin_user_id, 'active'),
@@ -106,8 +106,8 @@ begin
   insert into app.auth_group (
     group_id,
     tenant_id,
-    name,
-    status
+    group_name,
+    group_status
   )
   values
     (v_dev_admin_group_id, v_dev_tenant_id, 'tenant-admin', 'active'),
@@ -117,8 +117,8 @@ begin
   insert into app.auth_permission (
     permission_id,
     code,
-    name,
-    status
+    permission_name,
+    permission_status
   )
   values
     (v_network_read_permission_id, 'network.read', 'Network Read', 'active'),
@@ -130,7 +130,7 @@ begin
     tenant_id,
     auth_user_id,
     group_id,
-    status
+    membership_status
   )
   values
     ('45000000-0000-0000-0000-000000000001', v_dev_tenant_id, v_admin_user_id, v_dev_admin_group_id, 'active'),
@@ -142,7 +142,7 @@ begin
     tenant_id,
     group_id,
     permission_id,
-    status
+    group_permission_status
   )
   values
     ('46000000-0000-0000-0000-000000000001', v_dev_tenant_id, v_dev_admin_group_id, v_network_read_permission_id, 'active'),

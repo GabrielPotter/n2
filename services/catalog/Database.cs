@@ -24,22 +24,8 @@ public sealed class CatalogDatabase
 
     public async Task<Result<InternalStatusResponse>> GetStatusAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            await using var connection = _connectionFactory.CreateConnection();
-            await connection.OpenAsync(cancellationToken);
-
-            await using var command = new NpgsqlCommand("select current_database()", connection);
-            var databaseName = (string?)await command.ExecuteScalarAsync(cancellationToken) ?? "unknown";
-
-            return Result<InternalStatusResponse>.Success(
-                new InternalStatusResponse("catalog", "ok", $"connected:{databaseName}", DateTimeOffset.UtcNow));
-        }
-        catch (Exception exception)
-        {
-            _logger.LogError(exception, "Catalog database status query failed.");
-            return Result<InternalStatusResponse>.Failure(new Error("database_error", exception.Message));
-        }
+        await Task.CompletedTask;
+        return Result<InternalStatusResponse>.Success(new InternalStatusResponse("catalog", RuntimeStatus.CreateDetails()));
     }
 
     public async Task<Result<IReadOnlyList<CategoryResponse>>> GetCategoriesAsync(Guid tenantId, CancellationToken cancellationToken)
@@ -55,11 +41,11 @@ public sealed class CatalogDatabase
                 select
                   oc.category_id,
                   oc.object_kind::text,
-                  oc.name
+                  oc.category_name
                 from app.object_category oc
                 where oc.tenant_id = @tenantId
-                  and oc.status = 'active'
-                order by name
+                  and oc.category_status = 'active'
+                order by oc.category_name
                 """;
 
             await using var command = new NpgsqlCommand(sql, connection);
@@ -97,11 +83,11 @@ public sealed class CatalogDatabase
                 select
                   ot.type_id,
                   ot.category_id,
-                  ot.name
+                  ot.type_name
                 from app.object_type ot
                 where ot.tenant_id = @tenantId
-                  and ot.status = 'active'
-                order by ot.name
+                  and ot.type_status = 'active'
+                order by ot.type_name
                 """;
 
             await using var command = new NpgsqlCommand(sql, connection);

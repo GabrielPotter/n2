@@ -4,19 +4,17 @@ public sealed record HealthResponse(string Service, string Status);
 
 public sealed record InternalStatusResponse(
     string Service,
-    string Status,
-    string DatabaseStatus,
-    DateTimeOffset CheckedAtUtc);
+    IReadOnlyDictionary<string, string?> Details);
 
 public sealed record QueryObjectResponse(
-    string Id,
-    string Name,
+    string ObjectId,
+    string ObjectName,
     string ObjectKind,
     string CategoryId,
     string CategoryName,
     string TypeId,
     string TypeName,
-    string Status);
+    string ObjectStatus);
 
 public sealed record QueryObjectsResponse(
     string Service,

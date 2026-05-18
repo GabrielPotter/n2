@@ -13,6 +13,7 @@ public static class Api
         });
 
         app.MapGet("/internal/status", GetInternalStatusAsync);
+        app.MapGet("/api/v1/tenats/by-name/{tenantName}", GetTenantByNameAsync);
         app.MapGet("/api/v1/me", GetCurrentUser);
         app.MapGet("/api/v1/tenants", GetTenantsAsync);
         app.MapGet("/api/v1/tenants/{tenantId}", GetTenantAsync);
@@ -61,6 +62,20 @@ public static class Api
         }
 
         var result = await service.GetTenantAsync(parsedTenantId, cancellationToken);
+        return ToResult(result);
+    }
+
+    private static async Task<IResult> GetTenantByNameAsync(
+        string tenantName,
+        TenantService service,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(tenantName))
+        {
+            return TypedResults.BadRequest(new { error = Error.Validation("TenantName is required.") });
+        }
+
+        var result = await service.GetTenantByNameAsync(tenantName.Trim(), cancellationToken);
         return ToResult(result);
     }
 

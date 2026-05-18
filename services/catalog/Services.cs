@@ -31,7 +31,7 @@ public sealed class CatalogService
     public Task<Result<InternalStatusResponse>> GetStatusAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Catalog status requested.");
-        return _database.GetStatusAsync(cancellationToken);
+        return Task.FromResult(Result<InternalStatusResponse>.Success(new InternalStatusResponse("catalog", RuntimeStatus.CreateDetails())));
     }
 
     public async Task<Result<CatalogCategoriesResponse>> GetCategoriesAsync(CancellationToken cancellationToken)

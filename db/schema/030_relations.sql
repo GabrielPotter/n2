@@ -15,7 +15,7 @@ create table app.net_layer_relation (
   layer_id uuid not null,
   layer_category_id uuid not null,
   layer_kind app.object_kind not null default 'layer',
-  status app.record_status not null default 'active',
+  relation_status app.record_status not null default 'active',
   created_at timestamptz not null default now(),
   created_by uuid,
   deleted_at timestamptz,
@@ -41,11 +41,11 @@ create table app.net_layer_relation (
 
 create unique index uq_net_layer_relation_active_layer_once
   on app.net_layer_relation (tenant_id, layer_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create index ix_net_layer_relation_active_net_layers
   on app.net_layer_relation (tenant_id, net_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create table app.layer_tree_relation (
   relation_id uuid primary key default gen_random_uuid(),
@@ -57,7 +57,7 @@ create table app.layer_tree_relation (
   child_layer_id uuid not null,
   child_layer_category_id uuid not null,
   child_layer_kind app.object_kind not null default 'layer',
-  status app.record_status not null default 'active',
+  relation_status app.record_status not null default 'active',
   created_at timestamptz not null default now(),
   created_by uuid,
   deleted_at timestamptz,
@@ -88,15 +88,15 @@ create table app.layer_tree_relation (
 
 create unique index uq_layer_tree_relation_active_child_once
   on app.layer_tree_relation (tenant_id, net_id, child_layer_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create index ix_layer_tree_relation_active_parent_lookup
   on app.layer_tree_relation (tenant_id, net_id, parent_layer_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create index ix_layer_tree_relation_active_child_lookup
   on app.layer_tree_relation (tenant_id, net_id, child_layer_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create table app.layer_node_relation (
   relation_id uuid primary key default gen_random_uuid(),
@@ -107,7 +107,7 @@ create table app.layer_node_relation (
   node_id uuid not null,
   node_category_id uuid not null,
   node_kind app.object_kind not null default 'node',
-  status app.record_status not null default 'active',
+  relation_status app.record_status not null default 'active',
   created_at timestamptz not null default now(),
   created_by uuid,
   deleted_at timestamptz,
@@ -133,11 +133,11 @@ create table app.layer_node_relation (
 
 create unique index uq_layer_node_relation_active_node_once
   on app.layer_node_relation (tenant_id, node_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create index ix_layer_node_relation_active_layer_nodes
   on app.layer_node_relation (tenant_id, layer_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create table app.node_tree_relation (
   relation_id uuid primary key default gen_random_uuid(),
@@ -149,7 +149,7 @@ create table app.node_tree_relation (
   child_node_id uuid not null,
   child_node_category_id uuid not null,
   child_node_kind app.object_kind not null default 'node',
-  status app.record_status not null default 'active',
+  relation_status app.record_status not null default 'active',
   created_at timestamptz not null default now(),
   created_by uuid,
   deleted_at timestamptz,
@@ -180,15 +180,15 @@ create table app.node_tree_relation (
 
 create unique index uq_node_tree_relation_active_child_once
   on app.node_tree_relation (tenant_id, layer_id, child_node_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create index ix_node_tree_relation_active_parent_lookup
   on app.node_tree_relation (tenant_id, layer_id, parent_node_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create index ix_node_tree_relation_active_child_lookup
   on app.node_tree_relation (tenant_id, layer_id, child_node_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create table app.edge_endpoint_relation (
   relation_id uuid primary key default gen_random_uuid(),
@@ -207,7 +207,7 @@ create table app.edge_endpoint_relation (
   target_node_type_id uuid not null,
   target_node_kind app.object_kind not null default 'node',
   is_directed boolean not null default false,
-  status app.record_status not null default 'active',
+  relation_status app.record_status not null default 'active',
   created_at timestamptz not null default now(),
   created_by uuid,
   deleted_at timestamptz,
@@ -244,19 +244,19 @@ create table app.edge_endpoint_relation (
 
 create unique index uq_edge_endpoint_relation_active_edge_once
   on app.edge_endpoint_relation (tenant_id, edge_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create index ix_edge_endpoint_relation_active_source_lookup
   on app.edge_endpoint_relation (tenant_id, source_node_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create index ix_edge_endpoint_relation_active_target_lookup
   on app.edge_endpoint_relation (tenant_id, target_node_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create index ix_edge_endpoint_relation_active_source_target_lookup
   on app.edge_endpoint_relation (tenant_id, source_node_id, target_node_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create table app.contain_endpoint_relation (
   relation_id uuid primary key default gen_random_uuid(),
@@ -273,7 +273,7 @@ create table app.contain_endpoint_relation (
   target_object_id uuid not null,
   target_object_category_id uuid not null,
   target_object_type_id uuid not null,
-  status app.record_status not null default 'active',
+  relation_status app.record_status not null default 'active',
   created_at timestamptz not null default now(),
   created_by uuid,
   deleted_at timestamptz,
@@ -305,12 +305,12 @@ create table app.contain_endpoint_relation (
 
 create unique index uq_contain_endpoint_relation_active_contain_once
   on app.contain_endpoint_relation (tenant_id, contain_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create index ix_contain_endpoint_relation_active_source_lookup
   on app.contain_endpoint_relation (tenant_id, source_layer_id, source_object_id)
-  where status = 'active';
+  where relation_status = 'active';
 
 create index ix_contain_endpoint_relation_active_target_lookup
   on app.contain_endpoint_relation (tenant_id, target_layer_id, target_object_id)
-  where status = 'active';
+  where relation_status = 'active';

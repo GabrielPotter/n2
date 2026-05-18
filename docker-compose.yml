@@ -34,9 +34,6 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.2
     # Development Keycloak instance with imported system and user realms.
-    command:
-      - start-dev
-      - --import-realm
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak
@@ -44,6 +41,15 @@ services:
       KC_DB_PASSWORD: keycloak
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KEYCLOAK_IMPORT_REALM: "${KEYCLOAK_IMPORT_REALM:-false}"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        if [ "$$KEYCLOAK_IMPORT_REALM" = "true" ]; then
+          exec /opt/keycloak/bin/kc.sh start-dev --import-realm
+        fi
+        exec /opt/keycloak/bin/kc.sh start-dev
     depends_on:
       keycloak-postgres:
         condition: service_healthy

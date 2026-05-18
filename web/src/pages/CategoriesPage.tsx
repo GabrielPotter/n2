@@ -34,7 +34,7 @@ export function CategoriesPage() {
             }}
           >
             <ListItemText
-              primary={category.name}
+              primary={category.categoryName}
               secondary={
                 <Box sx={{ mt: 0.75 }}>
                   <Typography variant="body2" color="text.secondary">

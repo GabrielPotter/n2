@@ -29,7 +29,7 @@ begin
     from app.graph_object go
     where go.tenant_id = p_tenant_id
       and go.object_id = p_object_id
-      and go.status = 'active'
+      and go.object_status = 'active'
   ) then
     raise exception 'Active graph_object not found. tenant_id=%, object_id=%', p_tenant_id, p_object_id;
   end if;
@@ -72,7 +72,7 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if new.status <> 'active' then
+  if new.relation_status <> 'active' then
     return new;
   end if;
 
@@ -101,7 +101,7 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if new.status <> 'active' then
+  if new.relation_status <> 'active' then
     return new;
   end if;
 
@@ -120,7 +120,7 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if new.status <> 'active' then
+  if new.relation_status <> 'active' then
     return new;
   end if;
 
@@ -144,7 +144,7 @@ begin
     where nlr.tenant_id = new.tenant_id
       and nlr.net_id = new.net_id
       and nlr.layer_id = new.parent_layer_id
-      and nlr.status = 'active'
+      and nlr.relation_status = 'active'
   ) then
     raise exception 'Parent layer is not an active member of the specified net. tenant_id=%, net_id=%, layer_id=%',
       new.tenant_id, new.net_id, new.parent_layer_id;
@@ -156,7 +156,7 @@ begin
     where nlr.tenant_id = new.tenant_id
       and nlr.net_id = new.net_id
       and nlr.layer_id = new.child_layer_id
-      and nlr.status = 'active'
+      and nlr.relation_status = 'active'
   ) then
     raise exception 'Child layer is not an active member of the specified net. tenant_id=%, net_id=%, layer_id=%',
       new.tenant_id, new.net_id, new.child_layer_id;
@@ -171,7 +171,7 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if new.status <> 'active' then
+  if new.relation_status <> 'active' then
     return new;
   end if;
 
@@ -190,7 +190,7 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if new.status <> 'active' then
+  if new.relation_status <> 'active' then
     return new;
   end if;
 
@@ -214,7 +214,7 @@ begin
     where lnr.tenant_id = new.tenant_id
       and lnr.layer_id = new.layer_id
       and lnr.node_id = new.parent_node_id
-      and lnr.status = 'active'
+      and lnr.relation_status = 'active'
   ) then
     raise exception 'Parent node is not an active member of the specified layer. tenant_id=%, layer_id=%, node_id=%',
       new.tenant_id, new.layer_id, new.parent_node_id;
@@ -226,7 +226,7 @@ begin
     where lnr.tenant_id = new.tenant_id
       and lnr.layer_id = new.layer_id
       and lnr.node_id = new.child_node_id
-      and lnr.status = 'active'
+      and lnr.relation_status = 'active'
   ) then
     raise exception 'Child node is not an active member of the specified layer. tenant_id=%, layer_id=%, node_id=%',
       new.tenant_id, new.layer_id, new.child_node_id;
@@ -253,7 +253,7 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if new.status <> 'active' then
+  if new.relation_status <> 'active' then
     return new;
   end if;
 
@@ -289,7 +289,7 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if new.status <> 'active' then
+  if new.relation_status <> 'active' then
     return new;
   end if;
 
@@ -311,7 +311,7 @@ begin
     where lnr.tenant_id = new.tenant_id
       and lnr.layer_id = new.layer_id
       and lnr.node_id = new.source_node_id
-      and lnr.status = 'active'
+      and lnr.relation_status = 'active'
   ) then
     raise exception 'Source node is not an active member of the specified layer. tenant_id=%, layer_id=%, node_id=%',
       new.tenant_id, new.layer_id, new.source_node_id;
@@ -323,7 +323,7 @@ begin
     where lnr.tenant_id = new.tenant_id
       and lnr.layer_id = new.layer_id
       and lnr.node_id = new.target_node_id
-      and lnr.status = 'active'
+      and lnr.relation_status = 'active'
   ) then
     raise exception 'Target node is not an active member of the specified layer. tenant_id=%, layer_id=%, node_id=%',
       new.tenant_id, new.layer_id, new.target_node_id;
@@ -340,7 +340,7 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if new.status <> 'active' then
+  if new.relation_status <> 'active' then
     return new;
   end if;
 
@@ -354,7 +354,7 @@ begin
     target_ancestor_node_id,
     depth_from_source_ancestor,
     depth_from_target_ancestor,
-    status
+    virtual_edge_status
   )
   select
     new.tenant_id,
@@ -381,7 +381,7 @@ begin
         target_node_id = excluded.target_node_id,
         depth_from_source_ancestor = excluded.depth_from_source_ancestor,
         depth_from_target_ancestor = excluded.depth_from_target_ancestor,
-        status = 'active';
+        virtual_edge_status = 'active';
 
   insert into app.virtual_connection_summary (
     tenant_id,
@@ -428,7 +428,7 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if new.status <> 'active' then
+  if new.relation_status <> 'active' then
     return new;
   end if;
 
@@ -479,14 +479,14 @@ begin
     and go.object_id = p_object_id;
 
   update app.graph_object
-  set status = 'deleted',
+  set object_status = 'deleted',
       updated_by = p_actor_user_id,
       deleted_at = v_now,
       deleted_by = p_actor_user_id,
       delete_operation_id = v_operation_id
   where tenant_id = p_tenant_id
     and object_id = p_object_id
-    and status = 'active';
+    and object_status = 'active';
 
   select to_jsonb(go)
   into v_new_data
@@ -495,21 +495,21 @@ begin
     and go.object_id = p_object_id;
 
   update app.net_layer_relation
-  set status = 'deleted',
+  set relation_status = 'deleted',
       deleted_at = v_now,
       deleted_by = p_actor_user_id,
       delete_operation_id = v_operation_id
   where tenant_id = p_tenant_id
-    and status = 'active'
+    and relation_status = 'active'
     and (net_id = p_object_id or layer_id = p_object_id);
 
   update app.layer_tree_relation
-  set status = 'deleted',
+  set relation_status = 'deleted',
       deleted_at = v_now,
       deleted_by = p_actor_user_id,
       delete_operation_id = v_operation_id
   where tenant_id = p_tenant_id
-    and status = 'active'
+    and relation_status = 'active'
     and (
       net_id = p_object_id
       or parent_layer_id = p_object_id
@@ -517,21 +517,21 @@ begin
     );
 
   update app.layer_node_relation
-  set status = 'deleted',
+  set relation_status = 'deleted',
       deleted_at = v_now,
       deleted_by = p_actor_user_id,
       delete_operation_id = v_operation_id
   where tenant_id = p_tenant_id
-    and status = 'active'
+    and relation_status = 'active'
     and (layer_id = p_object_id or node_id = p_object_id);
 
   update app.node_tree_relation
-  set status = 'deleted',
+  set relation_status = 'deleted',
       deleted_at = v_now,
       deleted_by = p_actor_user_id,
       delete_operation_id = v_operation_id
   where tenant_id = p_tenant_id
-    and status = 'active'
+    and relation_status = 'active'
     and (
       layer_id = p_object_id
       or parent_node_id = p_object_id
@@ -539,12 +539,12 @@ begin
     );
 
   update app.edge_endpoint_relation
-  set status = 'deleted',
+  set relation_status = 'deleted',
       deleted_at = v_now,
       deleted_by = p_actor_user_id,
       delete_operation_id = v_operation_id
   where tenant_id = p_tenant_id
-    and status = 'active'
+    and relation_status = 'active'
     and (
       layer_id = p_object_id
       or edge_id = p_object_id
@@ -553,12 +553,12 @@ begin
     );
 
   update app.contain_endpoint_relation
-  set status = 'deleted',
+  set relation_status = 'deleted',
       deleted_at = v_now,
       deleted_by = p_actor_user_id,
       delete_operation_id = v_operation_id
   where tenant_id = p_tenant_id
-    and status = 'active'
+    and relation_status = 'active'
     and (
       contain_id = p_object_id
       or source_layer_id = p_object_id
@@ -568,33 +568,10 @@ begin
     );
 
   update app.virtual_edge_index
-  set status = 'deleted'
+  set virtual_edge_status = 'deleted'
   where tenant_id = p_tenant_id
     and edge_id = p_object_id
-    and status = 'active';
-
-  insert into app.audit_event (
-    tenant_id,
-    actor_user_id,
-    operation_id,
-    entity_table,
-    entity_id,
-    operation,
-    old_data,
-    new_data,
-    created_at
-  )
-  values (
-    p_tenant_id,
-    p_actor_user_id,
-    v_operation_id,
-    'graph_object',
-    p_object_id,
-    'soft_delete',
-    v_old_data,
-    v_new_data,
-    v_now
-  );
+    and virtual_edge_status = 'active';
 
   return v_operation_id;
 end;

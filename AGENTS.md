@@ -269,13 +269,35 @@ Use structured logging templates, not string concatenation and not manually seri
 
 Do not use `Console.WriteLine` for application logging after logging is initialized.
 
-Audit logging, if needed, must be designed separately from diagnostic and service logging.
+Do not store diagnostic logs, audit logs, or event logs in PostgreSQL.
+
+Do not create database tables for logging or audit trails.
+
+Do not implement database-backed audit logging.
+
+If event history is needed in the future, treat that as a separate architecture decision and do not add it by default.
 
 ## 13. Authentication and authorization architecture
 
 During development, use a containerized Keycloak instance for authentication and authorization.
 
-Business microservices must validate Keycloak JWTs directly.
+Only the `gateway` service validates Keycloak JWTs directly.
+
+The `gateway` is the authentication boundary of the platform.
+
+User-facing and browser-facing requests must terminate at the `gateway`.
+
+The background/business microservices behind the `gateway` must not require direct Keycloak JWT validation for normal request handling.
+
+After successful JWT validation, the `gateway` forwards the current request context to downstream microservices through headers.
+
+Forwarded request context is the source of identity and tenant information for downstream internal microservice calls.
+
+Do not add JWT validation to background/business microservices unless the user explicitly requests an architecture change.
+
+Do not treat the absence of direct JWT validation in internal microservices as a bug during reviews if the request context is intentionally forwarded by the `gateway`.
+
+When reviewing or extending the project, evaluate authentication and authorization against this gateway-centered design, not against a per-service JWT validation model.
 
 Keycloak may later connect to external LDAP or other IdP providers in production, but that integration is out of scope for now.
 
@@ -305,6 +327,10 @@ The application currently expects tokens to include at least:
 
 Use short-lived access tokens.
 
+The `gateway` must extract the required identity and authorization data from the token and pass the current request context downstream in headers.
+
+Downstream services should authorize based on the forwarded trusted request context that comes from the `gateway`.
+
 Do not introduce backward compatibility layers.
 
 This project is under active development. If auth contracts change, update the code consistently instead of preserving old contracts.
@@ -331,7 +357,8 @@ Do not generate JavaScript.
 - PATCH partially updates a resource.
 - DELETE performs soft-delete by setting status = deleted.
 - Normal tenant APIs must not contain tenantId in the URL.
-- Tenant context must come from the Keycloak JWT tenant_id claim.
+- At the `gateway`, tenant context must come from the Keycloak JWT `tenant_id` claim.
+- Behind the `gateway`, tenant context must come from the forwarded trusted request headers derived from the validated token.
 - System/admin APIs may use /system/tenants/{tenantId}/... routes.
 - All references must use IDs only.
 - Names are display-only.

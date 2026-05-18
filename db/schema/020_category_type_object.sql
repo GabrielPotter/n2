@@ -4,9 +4,9 @@ create table app.object_category (
   category_id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null,
   object_kind app.object_kind not null,
-  name text not null,
+  category_name text not null,
   json_schema jsonb not null default '{}'::jsonb,
-  status app.record_status not null default 'active',
+  category_status app.record_status not null default 'active',
   created_at timestamptz not null default now(),
   created_by uuid,
   updated_at timestamptz not null default now(),
@@ -15,7 +15,7 @@ create table app.object_category (
   deleted_by uuid,
   constraint fk_object_category_tenant
     foreign key (tenant_id)
-    references app.tenant (id),
+    references app.tenant (tenant_id),
   constraint uq_object_category_tenant_category
     unique (tenant_id, category_id),
   constraint uq_object_category_tenant_category_kind
@@ -32,9 +32,9 @@ create table app.object_type (
   type_id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null,
   category_id uuid not null,
-  name text not null,
+  type_name text not null,
   json_schema jsonb not null default '{}'::jsonb,
-  status app.record_status not null default 'active',
+  type_status app.record_status not null default 'active',
   created_at timestamptz not null default now(),
   created_by uuid,
   updated_at timestamptz not null default now(),
@@ -56,11 +56,11 @@ comment on table app.object_type is
 create table app.graph_object (
   object_id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null,
-  name text not null,
+  object_name text not null,
   category_id uuid not null,
   type_id uuid not null,
   properties jsonb not null default '{}'::jsonb,
-  status app.record_status not null default 'active',
+  object_status app.record_status not null default 'active',
   created_at timestamptz not null default now(),
   created_by uuid,
   updated_at timestamptz not null default now(),
@@ -70,7 +70,7 @@ create table app.graph_object (
   delete_operation_id uuid,
   constraint fk_graph_object_tenant
     foreign key (tenant_id)
-    references app.tenant (id),
+    references app.tenant (tenant_id),
   constraint fk_graph_object_category
     foreign key (tenant_id, category_id)
     references app.object_category (tenant_id, category_id),
@@ -98,7 +98,7 @@ create index ix_graph_object_tenant_category_type
   on app.graph_object (tenant_id, category_id, type_id);
 
 create index ix_graph_object_tenant_status
-  on app.graph_object (tenant_id, status);
+  on app.graph_object (tenant_id, object_status);
 
 create index ix_graph_object_properties_gin
   on app.graph_object

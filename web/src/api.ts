@@ -101,6 +101,7 @@ type JwtPayload = {
   preferred_username?: string;
   email?: string;
   tenant_id?: string;
+  tenant_name?: string;
   authz_version?: string | number;
   roles?: string[] | string;
   exp?: number;
@@ -137,7 +138,7 @@ export function readSessionUser(realm: RealmId, username: string, accessToken: s
     throw new Error("Keycloak access token is missing required application claims.");
   }
 
-  if (realm === "n2-users" && (!payload.tenant_id || !Number.isFinite(authzVersion))) {
+  if (realm === "n2-users" && (!payload.tenant_name || !Number.isFinite(authzVersion))) {
     throw new Error("Keycloak access token is missing required application claims.");
   }
 
@@ -146,6 +147,7 @@ export function readSessionUser(realm: RealmId, username: string, accessToken: s
     username: username || payload.email || payload.preferred_username || payload.sub,
     subject: payload.sub,
     tenantId: payload.tenant_id,
+    tenantName: payload.tenant_name,
     roles,
     authzVersion,
     expiresAtUtc: payload.exp ? new Date(payload.exp * 1000).toISOString() : ""

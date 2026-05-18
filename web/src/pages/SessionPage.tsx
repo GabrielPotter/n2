@@ -20,6 +20,7 @@ export function SessionPage() {
       >
         <SessionField label="Realm" value={user?.realm ?? "-"} />
         <SessionField label="Username" value={user?.username ?? "-"} />
+        <SessionField label="Tenant name" value={user?.tenantName ?? "-"} />
         <SessionField label="Tenant ID" value={user?.tenantId ?? "-"} />
         <SessionField label="Subject" value={user?.subject ?? "-"} />
         <SessionField label="Authorization version" value={String(user?.authzVersion ?? "-")} />

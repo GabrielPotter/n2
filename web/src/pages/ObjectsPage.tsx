@@ -25,7 +25,7 @@ export function ObjectsPage() {
       <Stack spacing={1.5}>
         {data.objects.map((object) => (
           <Stack
-            key={object.id}
+            key={object.objectId}
             direction={{ xs: "column", md: "row" }}
             spacing={2}
             sx={{
@@ -37,15 +37,19 @@ export function ObjectsPage() {
             }}
           >
             <div>
-              <Typography variant="subtitle1">{object.name}</Typography>
+              <Typography variant="subtitle1">{object.objectName}</Typography>
               <Typography variant="body2" color="text.secondary">
                 {object.objectKind} | {object.categoryName} | {object.typeName}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {object.id}
+                {object.objectId}
               </Typography>
             </div>
-            <Chip label={object.status} color={object.status === "active" ? "success" : "default"} variant="outlined" />
+            <Chip
+              label={object.objectStatus}
+              color={object.objectStatus === "active" ? "success" : "default"}
+              variant="outlined"
+            />
           </Stack>
         ))}
         {!data.loading && data.objects.length === 0 ? (

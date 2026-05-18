@@ -24,22 +24,8 @@ public sealed class CoreQueryDatabase
 
     public async Task<Result<InternalStatusResponse>> GetStatusAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            await using var connection = _connectionFactory.CreateConnection();
-            await connection.OpenAsync(cancellationToken);
-
-            await using var command = new NpgsqlCommand("select current_database()", connection);
-            var databaseName = (string?)await command.ExecuteScalarAsync(cancellationToken) ?? "unknown";
-
-            return Result<InternalStatusResponse>.Success(
-                new InternalStatusResponse("core-query", "ok", $"connected:{databaseName}", DateTimeOffset.UtcNow));
-        }
-        catch (Exception exception)
-        {
-            _logger.LogError(exception, "Core query database status query failed.");
-            return Result<InternalStatusResponse>.Failure(new Error("database_error", exception.Message));
-        }
+        await Task.CompletedTask;
+        return Result<InternalStatusResponse>.Success(new InternalStatusResponse("core-query", RuntimeStatus.CreateDetails()));
     }
 
     public async Task<Result<IReadOnlyList<QueryObjectResponse>>> GetObjectsAsync(Guid tenantId, CancellationToken cancellationToken)
@@ -54,13 +40,13 @@ public sealed class CoreQueryDatabase
             const string sql = """
                 select
                   go.object_id,
-                  go.name,
+                  go.object_name,
                   oc.object_kind::text,
                   oc.category_id,
-                  oc.name,
+                  oc.category_name,
                   ot.type_id,
-                  ot.name,
-                  go.status::text
+                  ot.type_name,
+                  go.object_status::text
                 from app.graph_object go
                 join app.object_category oc
                   on oc.tenant_id = go.tenant_id
@@ -70,8 +56,8 @@ public sealed class CoreQueryDatabase
                  and ot.category_id = go.category_id
                  and ot.type_id = go.type_id
                 where go.tenant_id = @tenantId
-                  and go.status = 'active'
-                order by go.created_at desc, go.name
+                  and go.object_status = 'active'
+                order by go.created_at desc, go.object_name
                 """;
 
             await using var command = new NpgsqlCommand(sql, connection);

@@ -38,15 +38,25 @@ Use:
 
 ```bash
 make db-reset
-./db/scripts/recreate-database.sh
+./scripts/recreate-database.sh
 ```
 
-Supported environment variables for `./db/scripts/recreate-database.sh`:
+Supported environment variables for `./scripts/recreate-database.sh`:
 
 - `DB_NAME` default: `platformdb`
 - `DB_USER` default: `platform`
 
-The script uses `docker compose exec postgres psql` internally.
+The scripts use `docker compose exec postgres psql` internally.
+
+`make db-reset`:
+
+- stops the `postgres` container if it is running
+- removes only the application PostgreSQL volume
+- starts the `postgres` container again
+- waits until PostgreSQL accepts connections
+- recreates the full schema from the SQL files under `db/schema/`
+
+It does not remove Keycloak, Loki, or Grafana volumes.
 
 Equivalent `psql` example:
 
@@ -63,7 +73,7 @@ docker compose exec -T postgres psql -U platform -d platformdb < db/schema/010_t
 - `030_relations.sql`: object-to-object relation storage
 - `040_rules.sql`: tenant-specific category and type rule tables
 - `050_closure_virtual.sql`: node closure and virtual edge summary tables
-- `060_permissions_audit.sql`: users, groups, permissions, and audit tables
+- `060_permissions_audit.sql`: users, groups, and permissions tables
 - `070_functions_triggers.sql`: foundational PL/pgSQL functions and triggers
 - `900_seed_minimal_test_data.sql`: minimal local development seed data
 

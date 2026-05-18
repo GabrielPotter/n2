@@ -31,7 +31,7 @@ public sealed class CoreQueryService
     public Task<Result<InternalStatusResponse>> GetStatusAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Core query status requested.");
-        return _database.GetStatusAsync(cancellationToken);
+        return Task.FromResult(Result<InternalStatusResponse>.Success(new InternalStatusResponse("core-query", RuntimeStatus.CreateDetails())));
     }
 
     public async Task<Result<QueryObjectsResponse>> GetObjectsAsync(CancellationToken cancellationToken)

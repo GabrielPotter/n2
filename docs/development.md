@@ -5,8 +5,6 @@
 - Ubuntu 24
 - VS Code
 - Docker
-- .NET SDK
-- Node.js
 
 ## Common Commands
 
@@ -24,30 +22,25 @@ Follow logs when needed:
 docker compose logs -f
 ```
 
-Start PostgreSQL and supporting local infrastructure for running services outside Docker:
-
-```bash
-make dev
-```
-
-Run services locally:
-
-```bash
-dotnet run --project services/gateway/Gateway.csproj
-dotnet run --project services/catalog/Catalog.csproj
-dotnet run --project services/core-editor/CoreEditor.csproj
-dotnet run --project services/core-query/CoreQuery.csproj
-dotnet run --project services/system/System.csproj
-cd web && npm run dev
-```
-
 Build, test, and reset the database:
 
 ```bash
 make build
 make test
 make db-reset
+make keycloak-reset
+make loki-reset
+make grafana-reset
+make reset-all
 ```
+
+`make build` runs `docker compose build`.
+`make test` validates the Docker Compose configuration. There is no Dockerized automated test suite configured yet.
+`make db-reset` deletes only the application PostgreSQL Docker volume, restarts only the `postgres` service, then recreates the schema from `db/schema/`.
+`make keycloak-reset` deletes only the Keycloak PostgreSQL Docker volume, then restarts `keycloak-postgres` and `keycloak`.
+`make loki-reset` deletes only the Loki Docker volume, then restarts `loki` and `grafana-alloy`.
+`make grafana-reset` deletes only the Grafana Docker volume, then restarts `grafana`.
+`make reset-all` runs all four reset flows in sequence.
 
 List the host-side physical mount locations of all database volumes:
 
@@ -65,14 +58,13 @@ done
 
 - `5432` PostgreSQL
 - `8081` Keycloak
-  Keycloak imports `n2-system` and `n2-users` from `infra/keycloak/`
+  `make keycloak-reset` imports `n2-system` and `n2-users` from `infra/keycloak/`
   Development users come from those realm import JSON files or from manual creation in the Keycloak Admin UI
 - `5100` `gateway`
 - `5201` `catalog`
 - `5202` `core-editor`
 - `5203` `core-query`
 - `5204` `system`
-- `5173` Vite dev server
 - `8080` Docker web container
 - `3000` Grafana
 - `3100` Loki
@@ -121,7 +113,9 @@ Example Loki queries:
 - Prefer `db/schema/` over migration history during development.
 - Keycloak is the current authentication and authorization system.
 - Predefined authorization groups are modeled as Keycloak realm roles defined in the realm import JSON files.
-- `n2-users` users must have a `tenant_id` attribute.
+- `n2-users` users must have a `tenant_name` attribute.
+- Only `gateway` validates Keycloak JWTs directly.
+- Background services trust the request context headers forwarded by `gateway`.
 - External LDAP or other IdP integration is planned for production later but is out of scope now.
 
 ## Documentation Rules

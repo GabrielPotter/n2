@@ -72,9 +72,8 @@ This removes the containers but keeps the Loki and Grafana volumes.
 Use this when you want to delete all persisted Grafana and Loki data and start from a clean state:
 
 ```bash
-docker compose rm -sf loki grafana grafana-alloy
-docker volume rm n2_platform-loki-data n2_platform-grafana-data
-docker compose up -d loki grafana grafana-alloy
+make loki-reset
+make grafana-reset
 docker compose ps loki grafana grafana-alloy
 ```
 
@@ -87,6 +86,11 @@ This does not delete:
 
 - application PostgreSQL data
 - Keycloak PostgreSQL data
+
+If you want to reset only one part:
+
+- `make loki-reset`: resets only Loki persisted log storage and restarts `loki` with `grafana-alloy`
+- `make grafana-reset`: resets only Grafana persisted state and restarts `grafana`
 
 ## Common Loki Queries
 

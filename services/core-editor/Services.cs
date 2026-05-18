@@ -31,16 +31,16 @@ public sealed class CoreEditorService
     public Task<Result<InternalStatusResponse>> GetStatusAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Core editor status requested.");
-        return _database.GetStatusAsync(cancellationToken);
+        return Task.FromResult(Result<InternalStatusResponse>.Success(new InternalStatusResponse("core-editor", RuntimeStatus.CreateDetails())));
     }
 
     public async Task<Result<CreateObjectResponse>> CreateObjectAsync(
         CreateObjectRequest request,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
+        if (string.IsNullOrWhiteSpace(request.ObjectName))
         {
-            return Result<CreateObjectResponse>.Failure(Error.Validation("Name is required."));
+            return Result<CreateObjectResponse>.Failure(Error.Validation("ObjectName is required."));
         }
 
         if (string.IsNullOrWhiteSpace(request.CategoryId))
@@ -75,7 +75,7 @@ public sealed class CoreEditorService
 
         _logger.LogInformation(
             "Object created. ObjectId: {ObjectId}, CategoryId: {CategoryId}, TypeId: {TypeId}",
-            createResult.Value!.Id,
+            createResult.Value!.ObjectId,
             createResult.Value.CategoryId,
             createResult.Value.TypeId);
 

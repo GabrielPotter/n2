@@ -14,7 +14,7 @@
         "providerId": "declarative-user-profile",
         "config": {
           "kc.user.profile.config": [
-            "{\"attributes\":[{\"name\":\"username\",\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]}},{\"name\":\"email\",\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]}},{\"name\":\"tenant_id\",\"displayName\":\"Tenant ID\",\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"validations\":{\"length\":{\"min\":1,\"max\":64}}}]}"
+            "{\"attributes\":[{\"name\":\"username\",\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]}},{\"name\":\"email\",\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]}},{\"name\":\"tenant_name\",\"displayName\":\"Tenant Name\",\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"validations\":{\"length\":{\"min\":1,\"max\":128}}}]}"
           ]
         }
       }
@@ -58,13 +58,13 @@
           }
         },
         {
-          "name": "tenant_id",
+          "name": "tenant_name",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-usermodel-attribute-mapper",
           "consentRequired": false,
           "config": {
-            "user.attribute": "tenant_id",
-            "claim.name": "tenant_id",
+            "user.attribute": "tenant_name",
+            "claim.name": "tenant_name",
             "jsonType.label": "String",
             "multivalued": "false",
             "id.token.claim": "true",
@@ -117,14 +117,10 @@
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": false,
       "redirectUris": [
-        "http://localhost:5173/*",
-        "http://127.0.0.1:5173/*",
         "http://localhost:8080/*",
         "http://127.0.0.1:8080/*"
       ],
       "webOrigins": [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
         "http://localhost:8080",
         "http://127.0.0.1:8080"
       ],
@@ -146,8 +142,8 @@
       "firstName": "Admin",
       "lastName": "Developer",
       "attributes": {
-        "tenant_id": [
-          "10000000-0000-0000-0000-000000000001"
+        "tenant_name": [
+          "Development Tenant"
         ],
         "authz_version": [
           "1"
@@ -173,8 +169,8 @@
       "firstName": "Editor",
       "lastName": "Developer",
       "attributes": {
-        "tenant_id": [
-          "10000000-0000-0000-0000-000000000001"
+        "tenant_name": [
+          "Development Tenant"
         ],
         "authz_version": [
           "1"
@@ -200,8 +196,8 @@
       "firstName": "Viewer",
       "lastName": "Developer",
       "attributes": {
-        "tenant_id": [
-          "10000000-0000-0000-0000-000000000001"
+        "tenant_name": [
+          "Development Tenant"
         ],
         "authz_version": [
           "1"

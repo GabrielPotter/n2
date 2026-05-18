@@ -99,6 +99,12 @@ public sealed class GatewayClient
         return SendAsync(HttpMethod.Get, _settings.SystemUrl, $"/api/v1/tenants/{tenantId}", cancellationToken);
     }
 
+    public Task<Result<TenantLookupResponse>> GetSystemTenantByNameAsync(string tenantName, CancellationToken cancellationToken)
+    {
+        var encodedTenantName = Uri.EscapeDataString(tenantName);
+        return GetAsync<TenantLookupResponse>(_settings.SystemUrl, $"/api/v1/tenats/by-name/{encodedTenantName}", cancellationToken);
+    }
+
     public Task<ProxyResponse> CreateSystemTenantAsync(TenantCreateRequest request, CancellationToken cancellationToken)
     {
         return SendAsync(HttpMethod.Post, _settings.SystemUrl, "/api/v1/tenants", cancellationToken, request);

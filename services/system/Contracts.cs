@@ -6,45 +6,47 @@ public sealed record HealthResponse(string Service, string Status);
 
 public sealed record InternalStatusResponse(
     string Service,
-    string Status,
-    string DatabaseStatus,
-    DateTimeOffset CheckedAtUtc);
+    IReadOnlyDictionary<string, string?> Details);
 
 public sealed class TenantCreateRequest
 {
-    public string? Name { get; init; }
+    public string? TenantName { get; init; }
 
-    public string? Status { get; init; }
+    public string? TenantStatus { get; init; }
 
     public JsonElement? Properties { get; init; }
 }
 
 public sealed class TenantUpdateRequest
 {
-    public string? Name { get; init; }
+    public string? TenantName { get; init; }
 
-    public string? Status { get; init; }
+    public string? TenantStatus { get; init; }
 
     public JsonElement? Properties { get; init; }
 }
 
 public sealed class TenantPatchRequest
 {
-    public string? Name { get; init; }
+    public string? TenantName { get; init; }
 
-    public string? Status { get; init; }
+    public string? TenantStatus { get; init; }
 
     public JsonElement? Properties { get; init; }
 }
 
 public sealed record TenantResponse(
-    string Id,
-    string Name,
-    string Status,
+    string TenantId,
+    string TenantName,
+    string TenantStatus,
     JsonElement Properties,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     DateTimeOffset? DeletedAt);
+
+public sealed record TenantLookupResponse(
+    string TenantId,
+    string TenantName);
 
 public sealed record CurrentUserResponse(
     string Subject,

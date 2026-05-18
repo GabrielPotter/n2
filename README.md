@@ -26,24 +26,16 @@ Follow logs when needed:
 docker compose logs -f
 ```
 
-Start PostgreSQL only, then run services locally:
-
-```bash
-make dev
-dotnet run --project services/gateway/Gateway.csproj
-dotnet run --project services/catalog/Catalog.csproj
-dotnet run --project services/core-editor/CoreEditor.csproj
-dotnet run --project services/core-query/CoreQuery.csproj
-dotnet run --project services/system/System.csproj
-cd web && npm run dev
-```
-
 Common commands:
 
 ```bash
 make build
 make test
 make db-reset
+make keycloak-reset
+make loki-reset
+make grafana-reset
+make reset-all
 ```
 
 ## Documentation
@@ -60,13 +52,13 @@ Detailed project documentation lives under [`docs/`](docs/README.md).
 ## Authentication Summary
 
 - Keycloak is the authentication and authorization system.
-- Development Keycloak imports two realms from `infra/keycloak/`:
+- `make keycloak-reset` imports two realms from `infra/keycloak/`:
   - `n2-system`
   - `n2-users`
 - Development users can be created from realm import JSON or manually in the Keycloak Admin UI.
 - Predefined authorization groups are modeled as Keycloak realm roles, not Keycloak groups.
 - Realm roles are declared in the realm import JSON files.
-- `n2-users` users must have a `tenant_id` attribute.
+- `n2-users` users must have a `tenant_name` attribute, and the gateway resolves it to `tenant_id`.
 - External LDAP or other IdP integration may be added for production later, but it is out of scope now.
 
 ## Core Rules
@@ -75,5 +67,6 @@ Detailed project documentation lives under [`docs/`](docs/README.md).
 - All detailed documentation lives under `docs/`.
 - Documentation files must use the `.md` format.
 - `db/schema/` is the only database schema source of truth.
-- Business microservices validate Keycloak JWTs directly.
+- Only `gateway` validates Keycloak JWTs directly.
+- Background services trust the request context headers forwarded by `gateway`.
 - Development Keycloak imports `infra/keycloak/n2-system-realm.json` and `infra/keycloak/n2-users-realm.json`.

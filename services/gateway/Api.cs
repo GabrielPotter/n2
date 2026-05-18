@@ -4,7 +4,7 @@ namespace Gateway;
 
 public static class Api
 {
-    public static IEndpointRouteBuilder MapGatewayApi(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapSystemApi(this IEndpointRouteBuilder app)
     {
         app.MapGet("/health", async Task<HealthResponse> () =>
         {
@@ -14,7 +14,22 @@ public static class Api
 
         var systemApi = app.MapGroup("/api/v1/system")
             .RequireAuthorization(AppAuthorizationPolicies.SystemUser);
+        app.MapGet("/api/v1/status", GetGatewayStatusListAsync)
+            .RequireAuthorization(AppAuthorizationPolicies.SupportAdmin);
 
+        systemApi.MapGet("/me", GetSystemCurrentUser);
+        systemApi.MapGet("/tenants", GetSystemTenantsAsync);
+        systemApi.MapGet("/tenants/{tenantId}", GetSystemTenantAsync);
+        systemApi.MapPost("/tenants", CreateSystemTenantAsync);
+        systemApi.MapPut("/tenants/{tenantId}", UpdateSystemTenantAsync);
+        systemApi.MapPatch("/tenants/{tenantId}", PatchSystemTenantAsync);
+        systemApi.MapDelete("/tenants/{tenantId}", DeleteSystemTenantAsync);
+
+        return app;
+    }
+
+    public static IEndpointRouteBuilder MapUserApi(this IEndpointRouteBuilder app)
+    {
         var catalogApi = app.MapGroup("/api/v1/catalog")
             .RequireAuthorization(AppAuthorizationPolicies.Viewer);
 
@@ -24,30 +39,6 @@ public static class Api
         var editorApi = app.MapGroup("/api/v1/editor")
             .RequireAuthorization(AppAuthorizationPolicies.Viewer);
 
-        var gatewayAdminApi = app.MapGroup("/api/v1/gateway")
-            .RequireAuthorization(AppAuthorizationPolicies.SupportAdmin);
-
-        gatewayAdminApi.MapGet("/status", async (GatewayService service, CancellationToken cancellationToken) =>
-        {
-            var result = await service.GetStatusAsync(cancellationToken);
-            return TypedResults.Ok(result);
-        });
-
-        app.MapGet("/api/v1/catalog/status", GetCatalogStatusAsync)
-            .RequireAuthorization(AppAuthorizationPolicies.SupportAdmin);
-        app.MapGet("/api/v1/editor/status", GetEditorStatusAsync)
-            .RequireAuthorization(AppAuthorizationPolicies.SupportAdmin);
-        app.MapGet("/api/v1/query/status", GetQueryStatusAsync)
-            .RequireAuthorization(AppAuthorizationPolicies.SupportAdmin);
-        app.MapGet("/api/v1/system/status", GetSystemStatusAsync)
-            .RequireAuthorization(AppAuthorizationPolicies.SupportAdmin);
-        systemApi.MapGet("/me", GetSystemCurrentUser);
-        systemApi.MapGet("/tenants", GetSystemTenantsAsync);
-        systemApi.MapGet("/tenants/{tenantId}", GetSystemTenantAsync);
-        systemApi.MapPost("/tenants", CreateSystemTenantAsync);
-        systemApi.MapPut("/tenants/{tenantId}", UpdateSystemTenantAsync);
-        systemApi.MapPatch("/tenants/{tenantId}", PatchSystemTenantAsync);
-        systemApi.MapDelete("/tenants/{tenantId}", DeleteSystemTenantAsync);
         catalogApi.MapGet("/categories", GetCatalogCategoriesAsync);
         catalogApi.MapGet("/types", GetCatalogTypesAsync);
         queryApi.MapGet("/objects", GetQueryObjectsAsync);
@@ -57,41 +48,11 @@ public static class Api
         return app;
     }
 
-    private static async Task<IResult> GetCatalogStatusAsync(
+    private static async Task<IResult> GetGatewayStatusListAsync(
         GatewayService service,
         CancellationToken cancellationToken)
     {
-        var result = await service.GetCatalogStatusAsync(cancellationToken);
-        return result.IsSuccess
-            ? TypedResults.Ok(result.Value)
-            : TypedResults.Problem(result.Error!.Message, statusCode: StatusCodes.Status502BadGateway);
-    }
-
-    private static async Task<IResult> GetEditorStatusAsync(
-        GatewayService service,
-        CancellationToken cancellationToken)
-    {
-        var result = await service.GetEditorStatusAsync(cancellationToken);
-        return result.IsSuccess
-            ? TypedResults.Ok(result.Value)
-            : TypedResults.Problem(result.Error!.Message, statusCode: StatusCodes.Status502BadGateway);
-    }
-
-    private static async Task<IResult> GetQueryStatusAsync(
-        GatewayService service,
-        CancellationToken cancellationToken)
-    {
-        var result = await service.GetQueryStatusAsync(cancellationToken);
-        return result.IsSuccess
-            ? TypedResults.Ok(result.Value)
-            : TypedResults.Problem(result.Error!.Message, statusCode: StatusCodes.Status502BadGateway);
-    }
-
-    private static async Task<IResult> GetSystemStatusAsync(
-        GatewayService service,
-        CancellationToken cancellationToken)
-    {
-        var result = await service.GetSystemStatusAsync(cancellationToken);
+        var result = await service.GetStatusAsync(cancellationToken);
         return result.IsSuccess
             ? TypedResults.Ok(result.Value)
             : TypedResults.Problem(result.Error!.Message, statusCode: StatusCodes.Status502BadGateway);

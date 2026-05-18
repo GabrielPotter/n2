@@ -119,14 +119,14 @@ public static class KeycloakAuthentication
             .AddOptions<JwtBearerOptions>(KeycloakAuthenticationSchemes.Users)
             .Configure<IOptions<KeycloakAuthenticationSettings>>((options, settings) =>
             {
-                ConfigureJwtBearerOptions(options, settings.Value.Users, requireTenantId: false);
+                ConfigureJwtBearerOptions(options, settings.Value.Users, requireTenantResolution: true);
             });
 
         services
             .AddOptions<JwtBearerOptions>(KeycloakAuthenticationSchemes.System)
             .Configure<IOptions<KeycloakAuthenticationSettings>>((options, settings) =>
             {
-                ConfigureJwtBearerOptions(options, settings.Value.System, requireTenantId: false);
+                ConfigureJwtBearerOptions(options, settings.Value.System, requireTenantResolution: false);
             });
 
         return services;
@@ -196,7 +196,7 @@ public static class KeycloakAuthentication
     private static void ConfigureJwtBearerOptions(
         JwtBearerOptions options,
         KeycloakRealmAuthenticationSettings settings,
-        bool requireTenantId)
+        bool requireTenantResolution)
     {
         if (string.IsNullOrWhiteSpace(settings.Issuer))
         {
@@ -231,21 +231,46 @@ public static class KeycloakAuthentication
 
         options.Events = new JwtBearerEvents
         {
-            OnTokenValidated = context =>
+            OnTokenValidated = async context =>
             {
-                if (!requireTenantId)
+                if (!requireTenantResolution)
                 {
-                    return Task.CompletedTask;
+                    return;
                 }
 
-                var tenantId = context.Principal?.FindFirstValue(AppClaimTypes.TenantId);
+                var tenantName = context.Principal?.FindFirstValue(AppClaimTypes.TenantName);
+
+                if (string.IsNullOrWhiteSpace(tenantName))
+                {
+                    context.Fail("Keycloak JWT is missing tenant_name.");
+                    return;
+                }
+
+                var resolver = context.HttpContext.RequestServices.GetService<ITenantIdResolver>();
+
+                if (resolver is null)
+                {
+                    context.Fail("Tenant ID resolver is not configured.");
+                    return;
+                }
+
+                var tenantId = await resolver.ResolveTenantIdAsync(tenantName, context.HttpContext.RequestAborted);
 
                 if (string.IsNullOrWhiteSpace(tenantId))
                 {
-                    context.Fail("Keycloak JWT is missing tenant_id.");
+                    context.Fail("The tenant_name claim could not be resolved to a tenant_id.");
+                    return;
                 }
 
-                return Task.CompletedTask;
+                if (context.Principal?.Identity is ClaimsIdentity identity)
+                {
+                    foreach (var existingClaim in identity.FindAll(AppClaimTypes.TenantId).ToArray())
+                    {
+                        identity.RemoveClaim(existingClaim);
+                    }
+
+                    identity.AddClaim(new Claim(AppClaimTypes.TenantId, tenantId));
+                }
             }
         };
     }
@@ -281,8 +306,14 @@ public static class SystemRoles
 public static class AppClaimTypes
 {
     public const string TenantId = "tenant_id";
+    public const string TenantName = "tenant_name";
     public const string Roles = "roles";
     public const string AuthzVersion = "authz_version";
+}
+
+public interface ITenantIdResolver
+{
+    Task<string?> ResolveTenantIdAsync(string tenantName, CancellationToken cancellationToken);
 }
 
 public interface IUserContextAccessor

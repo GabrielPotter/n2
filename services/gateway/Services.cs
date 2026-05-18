@@ -8,6 +8,7 @@ public static class Services
     public static IServiceCollection AddGatewayServices(this IServiceCollection services)
     {
         services.AddSingleton<GatewayService>();
+        services.AddSingleton<ITenantIdResolver, GatewayTenantIdResolver>();
         return services;
     }
 }
@@ -16,7 +17,6 @@ public sealed class GatewayService
 {
     private readonly GatewayClient _client;
     private readonly ILogger<GatewayService> _logger;
-    private readonly GatewaySettings _settings;
 
     public GatewayService(
         GatewayClient client,
@@ -25,31 +25,50 @@ public sealed class GatewayService
     {
         _client = client;
         _logger = logger;
-        _settings = settings.Value;
+        _ = settings.Value;
     }
 
-    public Task<GatewayStatusResponse> GetStatusAsync(CancellationToken cancellationToken)
+    public Task<Result<InternalStatusResponse>> GetInternalStatusAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Gateway status requested.");
+        return Task.FromResult(Result<InternalStatusResponse>.Success(new InternalStatusResponse("gateway", RuntimeStatus.CreateDetails())));
+    }
 
-        var response = new GatewayStatusResponse(
-            "gateway",
-            "ok",
-            _settings.PublicBaseUrl,
-            new GatewayRoutesResponse(
-                "/api/v1/gateway/status",
-                "/api/v1/catalog/status",
-                "/api/v1/editor/status",
-                "/api/v1/query/status",
-                "/api/v1/system/status",
-                "/api/v1/system/me",
-                "/api/v1/catalog/categories",
-                "/api/v1/catalog/types",
-                "/api/v1/query/objects",
-                "/api/v1/editor/object",
-                "/api/v1/system/tenants"));
+    public async Task<Result<GatewayStatusListResponse>> GetStatusAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Gateway aggregated status requested.");
 
-        return Task.FromResult(response);
+        var catalogTask = _client.GetCatalogStatusAsync(cancellationToken);
+        var editorTask = _client.GetEditorStatusAsync(cancellationToken);
+        var queryTask = _client.GetQueryStatusAsync(cancellationToken);
+        var systemTask = _client.GetSystemStatusAsync(cancellationToken);
+
+        await Task.WhenAll(catalogTask, editorTask, queryTask, systemTask);
+
+        var services = new List<InternalStatusResponse>
+        {
+            new("gateway", RuntimeStatus.CreateDetails())
+        };
+
+        var upstreamResults = new[]
+        {
+            await catalogTask,
+            await editorTask,
+            await queryTask,
+            await systemTask
+        };
+
+        foreach (var result in upstreamResults)
+        {
+            if (result.IsFailure)
+            {
+                return Result<GatewayStatusListResponse>.Failure(result.Error!);
+            }
+
+            services.Add(result.Value!);
+        }
+
+        return Result<GatewayStatusListResponse>.Success(new GatewayStatusListResponse(services));
     }
 
     public Task<Common.Result<InternalStatusResponse>> GetCatalogStatusAsync(CancellationToken cancellationToken)
@@ -127,5 +146,34 @@ public sealed class GatewayService
         CancellationToken cancellationToken)
     {
         return _client.CreateObjectAsync(request, cancellationToken);
+    }
+}
+
+public sealed class GatewayTenantIdResolver : ITenantIdResolver
+{
+    private readonly GatewayClient _client;
+    private readonly ILogger<GatewayTenantIdResolver> _logger;
+
+    public GatewayTenantIdResolver(GatewayClient client, ILogger<GatewayTenantIdResolver> logger)
+    {
+        _client = client;
+        _logger = logger;
+    }
+
+    public async Task<string?> ResolveTenantIdAsync(string tenantName, CancellationToken cancellationToken)
+    {
+        var result = await _client.GetSystemTenantByNameAsync(tenantName, cancellationToken);
+
+        if (result.IsSuccess)
+        {
+            return result.Value!.TenantId;
+        }
+
+        _logger.LogWarning(
+            "Tenant ID resolution failed. TenantName: {TenantName}, ErrorCode: {ErrorCode}",
+            tenantName,
+            result.Error?.Code);
+
+        return null;
     }
 }

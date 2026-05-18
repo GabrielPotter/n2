@@ -22,19 +22,19 @@ export const developmentUsers: DevelopmentUser[] = [
     realm: "n2-users",
     username: "admin@example.com",
     label: "Admin",
-    description: "tenant-admin on dev-tenant"
+    description: "tenant-admin on Development Tenant"
   },
   {
     realm: "n2-users",
     username: "editor@example.com",
     label: "Editor",
-    description: "editor on dev-tenant"
+    description: "editor on Development Tenant"
   },
   {
     realm: "n2-users",
     username: "viewer@example.com",
     label: "Viewer",
-    description: "viewer on dev-tenant"
+    description: "viewer on Development Tenant"
   },
   {
     realm: "n2-system",

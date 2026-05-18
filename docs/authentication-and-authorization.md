@@ -3,7 +3,7 @@
 ## Overview
 
 Keycloak is the authentication and authorization system for the current project version.
-Business services validate Keycloak JWTs directly.
+Only the gateway validates Keycloak JWTs directly.
 
 This document covers:
 
@@ -18,18 +18,19 @@ This document covers:
 
 Authentication is performed by Keycloak.
 The client obtains an access token from a Keycloak realm and sends that token to the backend.
-The backend validates the JWT directly using configured issuer, audience, and JWKS settings.
+The gateway validates the JWT directly using configured issuer, audience, and JWKS settings.
 
 ### Authorization
 
 Authorization is also driven by Keycloak-issued tokens in the current project version.
-The backend uses token claims to decide whether a request is allowed.
+The gateway uses token claims to decide whether a request is allowed, then forwards trusted request context headers to downstream services.
 
 The current authorization model uses:
 
 - realm identity to distinguish `n2-users` from `n2-system`
 - realm roles in the `roles` claim
-- `tenant_id` for tenant-scoped business access
+- `tenant_name` in the `n2-users` token
+- a gateway-resolved `tenant_id` for downstream tenant-scoped business access
 
 ### Realm Separation
 
@@ -79,7 +80,7 @@ Defined realm roles:
 
 Declarative user profile:
 
-- users in this realm must have a `tenant_id` attribute
+- users in this realm must have a `tenant_name` attribute
 
 #### `n2-system`
 
@@ -98,7 +99,7 @@ Defined realm roles:
 - `support-admin`
 - `security-admin`
 
-This realm does not define `tenant_id` for users.
+This realm does not define tenant-specific user attributes.
 
 ### Roles Instead Of Keycloak Groups
 
@@ -140,7 +141,7 @@ Password123!
 
 ### Validation Model
 
-Backend services validate Keycloak JWTs directly.
+The gateway validates Keycloak JWTs directly.
 Validation is configured per realm with:
 
 - issuer
@@ -152,7 +153,7 @@ Validation is configured per realm with:
 Tenant business endpoints require:
 
 - a valid token from `n2-users`
-- a non-empty `tenant_id` claim
+- a non-empty `tenant_name` claim
 - a required tenant realm role
 
 The `n2-users` token model is defined by the imported client scope `n2-users-access`.
@@ -161,7 +162,7 @@ The access token is expected to contain at least:
 
 - `iss`
 - `sub`
-- `tenant_id`
+- `tenant_name`
 - `roles`
 - `authz_version`
 - `iat`
@@ -176,7 +177,7 @@ System endpoints require:
 - a valid token from `n2-system`
 - a required system realm role
 
-These endpoints do not use `tenant_id` as their source of truth.
+These endpoints do not use tenant context as their source of truth.
 
 ### Token Claim Mapping
 
@@ -185,7 +186,7 @@ The current `n2-users` realm import maps user attributes and realm roles into to
 Mapped user attributes:
 
 - user ID -> `sub`
-- `tenant_id` -> `tenant_id`
+- `tenant_name` -> `tenant_name`
 - `authz_version` -> `authz_version`
 
 Mapped role claim:
@@ -218,7 +219,8 @@ That means:
 
 ### Tenant Source Of Truth
 
-The tenant source of truth is the `tenant_id` token claim.
+The `n2-users` token carries `tenant_name`.
+The gateway resolves that `tenant_name` to the platform `tenant_id` through the `system` service and forwards the resolved `tenant_id` in trusted request headers.
 Tenant business endpoints must not accept tenant identity from the request body as the authoritative value.
 
 ## Development Operation
@@ -243,6 +245,7 @@ docker compose up -d --build
 ```
 
 This starts the stack in detached mode and returns the shell prompt immediately.
+It does not import realms into an existing or empty Keycloak database by itself.
 
 If you want to watch startup logs:
 
@@ -275,14 +278,13 @@ docker compose logs -f keycloak
 Use this when you want to delete all persisted Keycloak development data and recreate the state only from the current realm import JSON files.
 
 ```bash
-docker compose rm -sf keycloak keycloak-postgres
-docker volume rm n2_keycloak-postgres-data
-docker compose up -d keycloak-postgres keycloak
+make keycloak-reset
 docker compose logs -f keycloak
 ```
 
 This deletes only the dedicated Keycloak development database volume.
 It does not delete the main application PostgreSQL volume.
+This flow is also the place where realm import is explicitly enabled.
 
 ### Stop Keycloak
 
@@ -318,9 +320,7 @@ In this project, that typically means:
 The correct development fix is a full Keycloak cleanup and restart:
 
 ```bash
-docker compose rm -sf keycloak keycloak-postgres
-docker volume rm n2_keycloak-postgres-data
-docker compose up -d keycloak-postgres keycloak
+make keycloak-reset
 docker compose logs -f keycloak
 ```
 

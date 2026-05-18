@@ -28,22 +28,8 @@ public sealed class SystemDatabase
 
     public async Task<Result<InternalStatusResponse>> GetStatusAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            await using var connection = _connectionFactory.CreateConnection();
-            await connection.OpenAsync(cancellationToken);
-
-            await using var command = new NpgsqlCommand("select current_database()", connection);
-            var databaseName = (string?)await command.ExecuteScalarAsync(cancellationToken) ?? "unknown";
-
-            return Result<InternalStatusResponse>.Success(
-                new InternalStatusResponse("system", "ok", $"connected:{databaseName}", DateTimeOffset.UtcNow));
-        }
-        catch (Exception exception)
-        {
-            _logger.LogError(exception, "System database status query failed.");
-            return Result<InternalStatusResponse>.Failure(new Error("database_error", exception.Message));
-        }
+        await Task.CompletedTask;
+        return Result<InternalStatusResponse>.Success(new InternalStatusResponse("system", RuntimeStatus.CreateDetails()));
     }
 
     public async Task<Result<IReadOnlyList<TenantResponse>>> GetTenantsAsync(CancellationToken cancellationToken)
@@ -52,16 +38,16 @@ public sealed class SystemDatabase
         {
             const string sql = """
                 select
-                  t.id,
-                  t.name,
-                  t.status::text,
+                  t.tenant_id,
+                  t.tenant_name,
+                  t.tenant_status::text,
                   t.properties,
                   t.created_at,
                   t.updated_at,
                   t.deleted_at
                 from app.tenant t
-                where t.status <> 'deleted'
-                order by t.name, t.id
+                where t.tenant_status <> 'deleted'
+                order by t.tenant_name, t.tenant_id
                 """;
 
             return Result<IReadOnlyList<TenantResponse>>.Success(
@@ -80,16 +66,16 @@ public sealed class SystemDatabase
         {
             const string sql = """
                 select
-                  t.id,
-                  t.name,
-                  t.status::text,
+                  t.tenant_id,
+                  t.tenant_name,
+                  t.tenant_status::text,
                   t.properties,
                   t.created_at,
                   t.updated_at,
                   t.deleted_at
                 from app.tenant t
-                where t.id = @tenantId
-                  and t.status <> 'deleted'
+                where t.tenant_id = @tenantId
+                  and t.tenant_status <> 'deleted'
                 """;
 
             await using var connection = _connectionFactory.CreateConnection();
@@ -114,10 +100,48 @@ public sealed class SystemDatabase
         }
     }
 
+    public async Task<Result<TenantLookupResponse>> GetTenantByNameAsync(string tenantName, CancellationToken cancellationToken)
+    {
+        try
+        {
+            const string sql = """
+                select
+                  t.tenant_id,
+                  t.tenant_name
+                from app.tenant t
+                where t.tenant_name = @tenantName
+                  and t.tenant_status <> 'deleted'
+                """;
+
+            await using var connection = _connectionFactory.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("tenantName", tenantName);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                return Result<TenantLookupResponse>.Failure(Error.NotFound("Tenant was not found."));
+            }
+
+            return Result<TenantLookupResponse>.Success(
+                new TenantLookupResponse(
+                    reader.GetGuid(0).ToString("D"),
+                    reader.GetString(1)));
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Tenant get by name query failed. TenantName: {TenantName}", tenantName);
+            return Result<TenantLookupResponse>.Failure(new Error("database_error", exception.Message));
+        }
+    }
+
     public async Task<Result<TenantResponse>> CreateTenantAsync(
         Guid tenantId,
-        string name,
-        string status,
+        string tenantName,
+        string tenantStatus,
         JsonElement properties,
         CancellationToken cancellationToken)
     {
@@ -125,23 +149,23 @@ public sealed class SystemDatabase
         {
             const string sql = """
                 insert into app.tenant (
-                  id,
-                  name,
-                  status,
+                  tenant_id,
+                  tenant_name,
+                  tenant_status,
                   properties,
                   deleted_at
                 )
                 values (
                   @tenantId,
-                  @name,
-                  cast(@status as app.record_status),
+                  @tenantName,
+                  cast(@tenantStatus as app.record_status),
                   @properties,
-                  case when @status = 'deleted' then now() else null end
+                  case when @tenantStatus = 'deleted' then now() else null end
                 )
                 returning
-                  id,
-                  name,
-                  status::text,
+                  tenant_id,
+                  tenant_name,
+                  tenant_status::text,
                   properties,
                   created_at,
                   updated_at,
@@ -153,8 +177,8 @@ public sealed class SystemDatabase
 
             await using var command = new NpgsqlCommand(sql, connection);
             command.Parameters.AddWithValue("tenantId", tenantId);
-            command.Parameters.AddWithValue("name", name);
-            command.Parameters.AddWithValue("status", status);
+            command.Parameters.AddWithValue("tenantName", tenantName);
+            command.Parameters.AddWithValue("tenantStatus", tenantStatus);
             command.Parameters.Add("properties", NpgsqlDbType.Jsonb).Value = properties.GetRawText();
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -165,7 +189,7 @@ public sealed class SystemDatabase
         catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
         {
             _logger.LogWarning(exception, "Tenant create conflict. TenantId: {TenantId}", tenantId);
-            return Result<TenantResponse>.Failure(Error.Conflict("Tenant already exists."));
+            return Result<TenantResponse>.Failure(Error.Conflict("Tenant name already exists."));
         }
         catch (Exception exception)
         {
@@ -176,8 +200,8 @@ public sealed class SystemDatabase
 
     public async Task<Result<TenantResponse>> UpdateTenantAsync(
         Guid tenantId,
-        string name,
-        string status,
+        string tenantName,
+        string tenantStatus,
         JsonElement properties,
         CancellationToken cancellationToken)
     {
@@ -186,18 +210,18 @@ public sealed class SystemDatabase
             const string sql = """
                 update app.tenant
                 set
-                  name = @name,
-                  status = cast(@status as app.record_status),
+                  tenant_name = @tenantName,
+                  tenant_status = cast(@tenantStatus as app.record_status),
                   properties = @properties,
                   deleted_at = case
-                    when @status = 'deleted' then coalesce(deleted_at, now())
+                    when @tenantStatus = 'deleted' then coalesce(deleted_at, now())
                     else null
                   end
-                where id = @tenantId
+                where tenant_id = @tenantId
                 returning
-                  id,
-                  name,
-                  status::text,
+                  tenant_id,
+                  tenant_name,
+                  tenant_status::text,
                   properties,
                   created_at,
                   updated_at,
@@ -207,10 +231,15 @@ public sealed class SystemDatabase
             return await ExecuteTenantMutationAsync(
                 sql,
                 tenantId,
-                name,
-                status,
+                tenantName,
+                tenantStatus,
                 properties,
                 cancellationToken);
+        }
+        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            _logger.LogWarning(exception, "Tenant update conflict. TenantId: {TenantId}", tenantId);
+            return Result<TenantResponse>.Failure(Error.Conflict("Tenant name already exists."));
         }
         catch (Exception exception)
         {
@@ -221,8 +250,8 @@ public sealed class SystemDatabase
 
     public async Task<Result<TenantResponse>> PatchTenantAsync(
         Guid tenantId,
-        string? name,
-        string? status,
+        string? tenantName,
+        string? tenantStatus,
         JsonElement? properties,
         CancellationToken cancellationToken)
     {
@@ -231,18 +260,18 @@ public sealed class SystemDatabase
             const string sql = """
                 update app.tenant
                 set
-                  name = coalesce(@name, name),
-                  status = coalesce(cast(@status as app.record_status), status),
+                  tenant_name = coalesce(@tenantName, tenant_name),
+                  tenant_status = coalesce(cast(@tenantStatus as app.record_status), tenant_status),
                   properties = coalesce(@properties, properties),
                   deleted_at = case
-                    when coalesce(cast(@status as app.record_status), status) = 'deleted' then coalesce(deleted_at, now())
+                    when coalesce(cast(@tenantStatus as app.record_status), tenant_status) = 'deleted' then coalesce(deleted_at, now())
                     else null
                   end
-                where id = @tenantId
+                where tenant_id = @tenantId
                 returning
-                  id,
-                  name,
-                  status::text,
+                  tenant_id,
+                  tenant_name,
+                  tenant_status::text,
                   properties,
                   created_at,
                   updated_at,
@@ -254,8 +283,8 @@ public sealed class SystemDatabase
 
             await using var command = new NpgsqlCommand(sql, connection);
             command.Parameters.AddWithValue("tenantId", tenantId);
-            command.Parameters.AddWithValue("name", (object?)name ?? DBNull.Value);
-            command.Parameters.AddWithValue("status", (object?)status ?? DBNull.Value);
+            command.Parameters.AddWithValue("tenantName", (object?)tenantName ?? DBNull.Value);
+            command.Parameters.AddWithValue("tenantStatus", (object?)tenantStatus ?? DBNull.Value);
             command.Parameters.Add("properties", NpgsqlDbType.Jsonb).Value =
                 properties.HasValue ? properties.Value.GetRawText() : DBNull.Value;
 
@@ -267,6 +296,11 @@ public sealed class SystemDatabase
             }
 
             return Result<TenantResponse>.Success(ReadTenant(reader));
+        }
+        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            _logger.LogWarning(exception, "Tenant patch conflict. TenantId: {TenantId}", tenantId);
+            return Result<TenantResponse>.Failure(Error.Conflict("Tenant name already exists."));
         }
         catch (Exception exception)
         {
@@ -282,10 +316,10 @@ public sealed class SystemDatabase
             const string sql = """
                 update app.tenant
                 set
-                  status = 'deleted',
+                  tenant_status = 'deleted',
                   deleted_at = coalesce(deleted_at, now())
-                where id = @tenantId
-                  and status <> 'deleted'
+                where tenant_id = @tenantId
+                  and tenant_status <> 'deleted'
                 """;
 
             await using var connection = _connectionFactory.CreateConnection();
@@ -310,8 +344,8 @@ public sealed class SystemDatabase
     private async Task<Result<TenantResponse>> ExecuteTenantMutationAsync(
         string sql,
         Guid tenantId,
-        string name,
-        string status,
+        string tenantName,
+        string tenantStatus,
         JsonElement properties,
         CancellationToken cancellationToken)
     {
@@ -320,8 +354,8 @@ public sealed class SystemDatabase
 
         await using var command = new NpgsqlCommand(sql, connection);
         command.Parameters.AddWithValue("tenantId", tenantId);
-        command.Parameters.AddWithValue("name", name);
-        command.Parameters.AddWithValue("status", status);
+        command.Parameters.AddWithValue("tenantName", tenantName);
+        command.Parameters.AddWithValue("tenantStatus", tenantStatus);
         command.Parameters.Add("properties", NpgsqlDbType.Jsonb).Value = properties.GetRawText();
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);

@@ -24,22 +24,8 @@ public sealed class CoreEditorDatabase
 
     public async Task<Result<InternalStatusResponse>> GetStatusAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            await using var connection = _connectionFactory.CreateConnection();
-            await connection.OpenAsync(cancellationToken);
-
-            await using var command = new NpgsqlCommand("select current_database()", connection);
-            var databaseName = (string?)await command.ExecuteScalarAsync(cancellationToken) ?? "unknown";
-
-            return Result<InternalStatusResponse>.Success(
-                new InternalStatusResponse("core-editor", "ok", $"connected:{databaseName}", DateTimeOffset.UtcNow));
-        }
-        catch (Exception exception)
-        {
-            _logger.LogError(exception, "Core editor database status query failed.");
-            return Result<InternalStatusResponse>.Failure(new Error("database_error", exception.Message));
-        }
+        await Task.CompletedTask;
+        return Result<InternalStatusResponse>.Success(new InternalStatusResponse("core-editor", RuntimeStatus.CreateDetails()));
     }
 
     public async Task<Result<ObjectResponse>> CreateObjectAsync(
@@ -57,31 +43,31 @@ public sealed class CoreEditorDatabase
                   insert into app.graph_object (
                     object_id,
                     tenant_id,
-                    name,
+                    object_name,
                     category_id,
                     type_id,
                     properties,
-                    status
+                    object_status
                   )
                   select
                     @id,
                     @tenantId,
-                    @name,
+                    @objectName,
                     @categoryId,
                     @typeId,
                     '{}'::jsonb,
                     'active'
-                  returning object_id, tenant_id, category_id, type_id, name, status
+                  returning object_id, tenant_id, category_id, type_id, object_name, object_status
                 )
                 select
                   io.object_id,
-                  io.name,
+                  io.object_name,
                   oc.object_kind::text,
                   oc.category_id,
-                  oc.name,
+                  oc.category_name,
                   ot.type_id,
-                  ot.name,
-                  io.status::text
+                  ot.type_name,
+                  io.object_status::text
                 from inserted_object io
                 join app.object_category oc
                   on oc.tenant_id = io.tenant_id
@@ -95,7 +81,7 @@ public sealed class CoreEditorDatabase
             await using var command = new NpgsqlCommand(sql, connection);
             command.Parameters.AddWithValue("id", Guid.NewGuid());
             command.Parameters.AddWithValue("tenantId", tenantId);
-            command.Parameters.AddWithValue("name", request.Name.Trim());
+            command.Parameters.AddWithValue("objectName", request.ObjectName.Trim());
             command.Parameters.AddWithValue("categoryId", Guid.Parse(request.CategoryId));
             command.Parameters.AddWithValue("typeId", Guid.Parse(request.TypeId));
 
@@ -118,7 +104,7 @@ public sealed class CoreEditorDatabase
 
             _logger.LogInformation(
                 "Graph object inserted. ObjectId: {ObjectId}, CategoryId: {CategoryId}, TypeId: {TypeId}",
-                response.Id,
+                response.ObjectId,
                 response.CategoryId,
                 response.TypeId);
 

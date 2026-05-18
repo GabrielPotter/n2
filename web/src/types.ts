@@ -20,7 +20,7 @@ export type DevelopmentUser = {
 export type CatalogCategory = {
   categoryId: string;
   objectKind: string;
-  name: string;
+  categoryName: string;
 };
 
 export type CatalogCategoriesResponse = {
@@ -31,7 +31,7 @@ export type CatalogCategoriesResponse = {
 export type CatalogType = {
   typeId: string;
   categoryId: string;
-  name: string;
+  typeName: string;
 };
 
 export type CatalogTypesResponse = {
@@ -40,14 +40,14 @@ export type CatalogTypesResponse = {
 };
 
 export type QueryObject = {
-  id: string;
-  name: string;
+  objectId: string;
+  objectName: string;
   objectKind: string;
   categoryId: string;
   categoryName: string;
   typeId: string;
   typeName: string;
-  status: string;
+  objectStatus: string;
 };
 
 export type QueryObjectsResponse = {
@@ -56,7 +56,7 @@ export type QueryObjectsResponse = {
 };
 
 export type CreateObjectRequest = {
-  name: string;
+  objectName: string;
   categoryId: string;
   typeId: string;
 };
@@ -79,6 +79,7 @@ export type SessionUser = {
   username: string;
   subject: string;
   tenantId?: string;
+  tenantName?: string;
   roles: string[];
   authzVersion?: number;
   expiresAtUtc: string;

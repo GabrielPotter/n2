@@ -6,7 +6,7 @@ import { useAppContext } from "../app/AppProvider";
 import type { CreateObjectRequest } from "../types";
 
 const initialForm: CreateObjectRequest = {
-  name: "",
+  objectName: "",
   categoryId: "",
   typeId: ""
 };
@@ -44,10 +44,10 @@ export function CreateObjectPage() {
           {successMessage ? <Alert severity="success">{successMessage}</Alert> : null}
           <TextField
             label="Name"
-            value={form.name}
+            value={form.objectName}
             onChange={(event) => {
               setSuccessMessage("");
-              setForm((current) => ({ ...current, name: event.target.value }));
+              setForm((current) => ({ ...current, objectName: event.target.value }));
             }}
             required
             fullWidth
@@ -67,7 +67,7 @@ export function CreateObjectPage() {
           >
             {data.categories.map((category) => (
               <MenuItem key={category.categoryId} value={category.categoryId}>
-                {category.name} ({category.objectKind})
+                {category.categoryName} ({category.objectKind})
               </MenuItem>
             ))}
           </TextField>
@@ -84,7 +84,7 @@ export function CreateObjectPage() {
           >
             {filteredTypes.map((type) => (
               <MenuItem key={type.typeId} value={type.typeId}>
-                {type.name}
+                {type.typeName}
               </MenuItem>
             ))}
           </TextField>

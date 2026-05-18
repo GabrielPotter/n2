@@ -34,7 +34,7 @@ create table app.virtual_edge_index (
   target_ancestor_node_id uuid not null,
   depth_from_source_ancestor integer not null,
   depth_from_target_ancestor integer not null,
-  status app.record_status not null default 'active',
+  virtual_edge_status app.record_status not null default 'active',
   primary key (
     tenant_id,
     layer_id,
@@ -50,11 +50,11 @@ create table app.virtual_edge_index (
 
 create index ix_virtual_edge_index_active_source_ancestor_lookup
   on app.virtual_edge_index (tenant_id, layer_id, source_ancestor_node_id, target_ancestor_node_id)
-  where status = 'active';
+  where virtual_edge_status = 'active';
 
 create index ix_virtual_edge_index_active_target_ancestor_lookup
   on app.virtual_edge_index (tenant_id, layer_id, target_ancestor_node_id, source_ancestor_node_id)
-  where status = 'active';
+  where virtual_edge_status = 'active';
 
 create index ix_virtual_edge_index_edge_lookup
   on app.virtual_edge_index (tenant_id, layer_id, edge_id);

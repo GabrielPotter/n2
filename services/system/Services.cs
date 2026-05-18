@@ -17,21 +17,17 @@ public static class Services
 public sealed class SystemRealmService
 {
     private readonly ILogger<SystemRealmService> _logger;
-    private readonly SystemDatabase _database;
 
     public SystemRealmService(
-        ILogger<SystemRealmService> logger,
-        SystemDatabase database)
+        ILogger<SystemRealmService> logger)
     {
         _logger = logger;
-        _database = database;
     }
 
     public Task<Result<InternalStatusResponse>> GetStatusAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("System status requested.");
-
-        return _database.GetStatusAsync(cancellationToken);
+        return Task.FromResult(Result<InternalStatusResponse>.Success(new InternalStatusResponse("system", RuntimeStatus.CreateDetails())));
     }
 }
 
@@ -65,11 +61,17 @@ public sealed class TenantService
         return _database.GetTenantByIdAsync(tenantId, cancellationToken);
     }
 
+    public Task<Result<TenantLookupResponse>> GetTenantByNameAsync(string tenantName, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Tenant requested by name. TenantName: {TenantName}", tenantName);
+        return _database.GetTenantByNameAsync(tenantName, cancellationToken);
+    }
+
     public async Task<Result<TenantResponse>> CreateTenantAsync(
         TenantCreateRequest request,
         CancellationToken cancellationToken)
     {
-        var validationError = ValidateCreateOrUpdateRequest(request.Name, request.Status, request.Properties);
+        var validationError = ValidateCreateOrUpdateRequest(request.TenantName, request.TenantStatus, request.Properties);
 
         if (validationError is not null)
         {
@@ -77,13 +79,13 @@ public sealed class TenantService
         }
 
         var tenantId = Guid.CreateVersion7();
-        var name = request.Name!.Trim();
-        var status = request.Status!.Trim();
+        var tenantName = request.TenantName!.Trim();
+        var tenantStatus = request.TenantStatus!.Trim();
         var properties = NormalizeProperties(request.Properties);
 
         _logger.LogInformation("Tenant creation requested. TenantId: {TenantId}", tenantId);
 
-        return await _database.CreateTenantAsync(tenantId, name, status, properties, cancellationToken);
+        return await _database.CreateTenantAsync(tenantId, tenantName, tenantStatus, properties, cancellationToken);
     }
 
     public async Task<Result<TenantResponse>> UpdateTenantAsync(
@@ -91,7 +93,7 @@ public sealed class TenantService
         TenantUpdateRequest request,
         CancellationToken cancellationToken)
     {
-        var validationError = ValidateCreateOrUpdateRequest(request.Name, request.Status, request.Properties);
+        var validationError = ValidateCreateOrUpdateRequest(request.TenantName, request.TenantStatus, request.Properties);
 
         if (validationError is not null)
         {
@@ -102,8 +104,8 @@ public sealed class TenantService
 
         return await _database.UpdateTenantAsync(
             tenantId,
-            request.Name!.Trim(),
-            request.Status!.Trim(),
+            request.TenantName!.Trim(),
+            request.TenantStatus!.Trim(),
             NormalizeProperties(request.Properties),
             cancellationToken);
     }
@@ -124,8 +126,8 @@ public sealed class TenantService
 
         return await _database.PatchTenantAsync(
             tenantId,
-            string.IsNullOrWhiteSpace(request.Name) ? null : request.Name.Trim(),
-            string.IsNullOrWhiteSpace(request.Status) ? null : request.Status.Trim(),
+            string.IsNullOrWhiteSpace(request.TenantName) ? null : request.TenantName.Trim(),
+            string.IsNullOrWhiteSpace(request.TenantStatus) ? null : request.TenantStatus.Trim(),
             request.Properties.HasValue ? NormalizeProperties(request.Properties) : null,
             cancellationToken);
     }
@@ -157,12 +159,12 @@ public sealed class TenantService
     {
         if (string.IsNullOrWhiteSpace(name))
         {
-            return Error.Validation("Name is required.");
+            return Error.Validation("TenantName is required.");
         }
 
         if (string.IsNullOrWhiteSpace(status))
         {
-            return Error.Validation("Status is required.");
+            return Error.Validation("TenantStatus is required.");
         }
 
         if (!ValidStatuses.Contains(status.Trim()))
@@ -180,19 +182,19 @@ public sealed class TenantService
 
     private static Error? ValidatePatchRequest(TenantPatchRequest request)
     {
-        if (request.Name is null && request.Status is null && !request.Properties.HasValue)
+        if (request.TenantName is null && request.TenantStatus is null && !request.Properties.HasValue)
         {
             return Error.Validation("At least one field must be provided.");
         }
 
-        if (request.Status is not null && (string.IsNullOrWhiteSpace(request.Status) || !ValidStatuses.Contains(request.Status.Trim())))
+        if (request.TenantStatus is not null && (string.IsNullOrWhiteSpace(request.TenantStatus) || !ValidStatuses.Contains(request.TenantStatus.Trim())))
         {
             return Error.Validation("Status must be one of: active, inactive, deleted.");
         }
 
-        if (request.Name is not null && string.IsNullOrWhiteSpace(request.Name))
+        if (request.TenantName is not null && string.IsNullOrWhiteSpace(request.TenantName))
         {
-            return Error.Validation("Name is required.");
+            return Error.Validation("TenantName is required.");
         }
 
         if (request.Properties.HasValue && request.Properties.Value.ValueKind != JsonValueKind.Object)

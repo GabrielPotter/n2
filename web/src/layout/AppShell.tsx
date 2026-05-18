@@ -55,8 +55,8 @@ export function AppShell() {
             <Typography variant="body2">{session.user?.username}</Typography>
             <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", justifyContent: "flex-end" }}>
               <Chip size="small" label={`Realm: ${realmConfig.id}`} variant="outlined" />
-              {session.user?.tenantId ? (
-                <Chip size="small" label={`Tenant: ${session.user.tenantId}`} variant="outlined" />
+              {session.user?.tenantName ? (
+                <Chip size="small" label={`Tenant: ${session.user.tenantName}`} variant="outlined" />
               ) : null}
               <Chip size="small" label={`Roles: ${session.user?.roles.join(", ") || "none"}`} variant="outlined" />
               {typeof session.user?.authzVersion === "number" ? (
