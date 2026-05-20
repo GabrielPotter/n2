@@ -10,8 +10,9 @@
 
 ## Index
 
-- [Architecture](architecture.md)
+- [Project architecture](project-architecture.md)
+- [Communication architecture](communication-architecture.md)
+- [Database architecture](database-architecture.md)
+- [Logging architecture](logging-architecture.md)
+- [Authentication and authorization architecture](authentication-and-authorization-architecture.md)
 - [Development](development.md)
-- [Authentication and authorization](authentication-and-authorization.md)
-- [Logging](logging.md)
-- [Database](database.md)

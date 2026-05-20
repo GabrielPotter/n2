@@ -43,11 +43,12 @@ make reset-all
 Detailed project documentation lives under [`docs/`](docs/README.md).
 
 - [Documentation index](docs/README.md)
-- [Architecture](docs/architecture.md)
+- [Project architecture](docs/project-architecture.md)
+- [Communication architecture](docs/communication-architecture.md)
+- [Database architecture](docs/database-architecture.md)
+- [Logging architecture](docs/logging-architecture.md)
+- [Authentication and authorization architecture](docs/authentication-and-authorization-architecture.md)
 - [Development](docs/development.md)
-- [Authentication and authorization](docs/authentication-and-authorization.md)
-- [Logging](docs/logging.md)
-- [Database](docs/database.md)
 
 ## Authentication Summary
 
